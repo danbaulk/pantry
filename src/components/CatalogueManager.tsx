@@ -3,6 +3,11 @@ import { Link } from 'react-router-dom'
 import type { GroceryItem } from '../types'
 import { usePantry } from '../state/usePantry'
 import { UNITS } from '../lib/units'
+import { buildItemsByAisle } from '../lib/itemsByAisle'
+import { GroceryItemEditRow } from './GroceryItemEditRow'
+import { ErrorMessage } from './ErrorMessage'
+import { UnitSelect } from './UnitSelect'
+import { AisleSelect } from './AisleSelect'
 import { btnDanger, btnPrimary, btnSecondary, card, input, label } from './ui'
 
 export function CatalogueManager() {
@@ -15,15 +20,10 @@ export function CatalogueManager() {
   const [aisleId, setAisleId] = useState(sortedAisles[0]?.id ?? '')
   const [unit, setUnit] = useState<string>(UNITS[0])
 
-  const itemsByAisle = useMemo(() => {
-    const groups = sortedAisles.map((aisle) => ({
-      aisle,
-      items: data.groceryItems
-        .filter((i) => i.aisleId === aisle.id)
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    }))
-    return groups.filter((g) => g.items.length > 0)
-  }, [data.groceryItems, sortedAisles])
+  const itemsByAisle = useMemo(
+    () => buildItemsByAisle(sortedAisles, data.groceryItems),
+    [data.groceryItems, sortedAisles],
+  )
 
   function handleAdd(e: React.FormEvent) {
     e.preventDefault()
@@ -63,22 +63,11 @@ export function CatalogueManager() {
         </div>
         <div>
           <label className={label}>Aisle</label>
-          <select className={input} value={aisleId} onChange={(e) => setAisleId(e.target.value)}>
-            {sortedAisles.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+          <AisleSelect value={aisleId} onChange={setAisleId} aisles={sortedAisles} />
         </div>
         <div>
           <label className={label}>Default unit</label>
-          <input
-            className={input}
-            list="unit-options"
-            value={unit}
-            onChange={(e) => setUnit(e.target.value)}
-          />
+          <UnitSelect value={unit} onChange={setUnit} />
         </div>
         <div className="sm:col-span-4">
           <button type="submit" className={btnPrimary} disabled={!name.trim() || !aisleId}>
@@ -87,9 +76,7 @@ export function CatalogueManager() {
         </div>
       </form>
 
-      {error && (
-        <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
-      )}
+      <ErrorMessage message={error} className="mb-3" />
 
       {itemsByAisle.length === 0 && (
         <p className="text-sm text-gray-500">No grocery items yet — add one above.</p>
@@ -104,7 +91,7 @@ export function CatalogueManager() {
             <ul className="space-y-2">
               {items.map((item) =>
                 editingId === item.id ? (
-                  <EditRow
+                  <GroceryItemEditRow
                     key={item.id}
                     item={item}
                     aisleOptions={sortedAisles}
@@ -132,56 +119,5 @@ export function CatalogueManager() {
         ))}
       </div>
     </div>
-  )
-}
-
-function EditRow({
-  item,
-  aisleOptions,
-  onSave,
-  onCancel,
-}: {
-  item: GroceryItem
-  aisleOptions: { id: string; name: string }[]
-  onSave: (input: { name: string; aisleId: string; defaultUnit: string }) => void
-  onCancel: () => void
-}) {
-  const [name, setName] = useState(item.name)
-  const [aisleId, setAisleId] = useState(item.aisleId)
-  const [unit, setUnit] = useState(item.defaultUnit)
-
-  return (
-    <li className={`${card} grid grid-cols-1 gap-3 sm:grid-cols-4`}>
-      <input
-        className={`${input} sm:col-span-2`}
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-      <select className={input} value={aisleId} onChange={(e) => setAisleId(e.target.value)}>
-        {aisleOptions.map((a) => (
-          <option key={a.id} value={a.id}>
-            {a.name}
-          </option>
-        ))}
-      </select>
-      <input
-        className={input}
-        list="unit-options"
-        value={unit}
-        onChange={(e) => setUnit(e.target.value)}
-      />
-      <div className="flex gap-2 sm:col-span-4">
-        <button
-          className={btnPrimary}
-          disabled={!name.trim()}
-          onClick={() => onSave({ name: name.trim(), aisleId, defaultUnit: unit })}
-        >
-          Save
-        </button>
-        <button className={btnSecondary} onClick={onCancel}>
-          Cancel
-        </button>
-      </div>
-    </li>
   )
 }

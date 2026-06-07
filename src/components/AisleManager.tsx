@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { usePantry } from '../state/usePantry'
+import { pluralize } from '../lib/format'
+import { ErrorMessage } from './ErrorMessage'
 import { btnDanger, btnPrimary, btnSecondary, card, input } from './ui'
 
 export function AisleManager() {
@@ -47,9 +49,7 @@ export function AisleManager() {
         </button>
       </form>
 
-      {error && (
-        <p className="mb-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
-      )}
+      <ErrorMessage message={error} className="mb-3" />
 
       <ul className="space-y-2">
         {sortedAisles.map((aisle, idx) => (
@@ -80,7 +80,7 @@ export function AisleManager() {
             />
 
             <span className="w-20 text-right text-xs text-gray-400">
-              {itemCount(aisle.id)} item{itemCount(aisle.id) === 1 ? '' : 's'}
+              {itemCount(aisle.id)} {pluralize('item', itemCount(aisle.id))}
             </span>
 
             <button className={btnDanger} onClick={() => handleDelete(aisle.id)}>

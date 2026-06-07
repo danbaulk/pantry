@@ -6,7 +6,6 @@ import { RecipeImport } from './components/RecipeImport'
 import { CatalogueManager } from './components/CatalogueManager'
 import { AisleManager } from './components/AisleManager'
 import { WeeklyPlanner } from './components/WeeklyPlanner'
-import { UnitDatalist } from './components/UnitDatalist'
 
 const navLink = ({ isActive }: { isActive: boolean }) =>
   `rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
@@ -52,8 +51,6 @@ export default function App() {
           <Route path="*" element={<Navigate to="/planner" replace />} />
         </Routes>
       </main>
-
-      <UnitDatalist />
     </div>
   )
 }

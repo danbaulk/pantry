@@ -12,4 +12,13 @@ export const input =
 
 export const label = 'block text-sm font-medium text-gray-700 mb-1'
 
+/** Smaller, lighter field label used inside compact rows (qty/unit/item pickers). */
+export const labelSmall = 'mb-1 block text-xs text-gray-500'
+
 export const card = 'rounded-lg border border-gray-200 bg-white p-4 shadow-sm'
+
+/** Bordered container for a single editable ingredient/grocery row. */
+export const ingredientRow = 'space-y-2 rounded-md border border-gray-200 p-3'
+
+/** Small rounded tag/label badge (recipe tags). */
+export const tagBadge = 'rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600'

@@ -1,7 +1,7 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { usePantry } from '../state/usePantry'
 import { formatIngredient } from '../lib/format'
-import { btnDanger, btnPrimary, btnSecondary, card } from './ui'
+import { btnDanger, btnPrimary, btnSecondary, card, tagBadge } from './ui'
 
 export function RecipeDetail() {
   const { id } = useParams<{ id: string }>()
@@ -56,7 +56,7 @@ export function RecipeDetail() {
       <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-gray-500">
         <span>{recipe.servings} servings</span>
         {recipe.tags.map((t) => (
-          <span key={t} className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+          <span key={t} className={tagBadge}>
             {t}
           </span>
         ))}

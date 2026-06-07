@@ -21,30 +21,30 @@ export interface ParsedRecipe {
 }
 
 /**
- * Tokens we recognise as units, mapped to a canonical form. Maps to a member of
- * UNITS where one exists; otherwise passes through a sensible free-text unit
- * (units are free text app-wide). A word is only treated as a unit if it's in
- * here — so "2 eggs" stays qty 2 / unit "each" / name "eggs", while "2 cups
- * flour" becomes qty 2 / unit "cup" / name "flour".
+ * Tokens we recognise as units, each mapped to a canonical form. Every target
+ * here MUST be a member of UNITS (src/lib/units.ts) — units are select-only
+ * app-wide, so an imported unit that wasn't in the list couldn't be represented.
+ * A word is only treated as a unit if it's in here — so "2 eggs" stays qty 2 /
+ * unit "each" / name "eggs", while "2 cups flour" becomes qty 2 / unit "cup" /
+ * name "flour". An unrecognised leading word falls back to unit "each".
  */
 const UNIT_ALIASES: Record<string, string> = {
   g: 'g', gram: 'g', grams: 'g', gr: 'g',
   kg: 'kg', kilogram: 'kg', kilograms: 'kg', kilo: 'kg', kilos: 'kg',
+  oz: 'oz', ounce: 'oz', ounces: 'oz',
+  lb: 'lb', lbs: 'lb', pound: 'lb', pounds: 'lb',
   ml: 'ml', milliliter: 'ml', milliliters: 'ml', millilitre: 'ml', millilitres: 'ml',
   l: 'l', liter: 'l', liters: 'l', litre: 'l', litres: 'l',
   tsp: 'tsp', tsps: 'tsp', teaspoon: 'tsp', teaspoons: 'tsp',
   tbsp: 'tbsp', tbsps: 'tbsp', tbs: 'tbsp', tablespoon: 'tbsp', tablespoons: 'tbsp',
+  cup: 'cup', cups: 'cup',
   can: 'can', cans: 'can', tin: 'can', tins: 'can',
+  jar: 'jar', jars: 'jar',
   pack: 'pack', packs: 'pack', packet: 'pack', packets: 'pack',
   bunch: 'bunch', bunches: 'bunch',
   clove: 'clove', cloves: 'clove',
   slice: 'slice', slices: 'slice',
   pinch: 'pinch', pinches: 'pinch',
-  // Recognised but with no canonical UNITS member — pass through as free text.
-  cup: 'cup', cups: 'cup',
-  oz: 'oz', ounce: 'oz', ounces: 'oz',
-  lb: 'lb', lbs: 'lb', pound: 'lb', pounds: 'lb',
-  jar: 'jar', jars: 'jar',
   handful: 'handful', handfuls: 'handful',
   sprig: 'sprig', sprigs: 'sprig',
 }

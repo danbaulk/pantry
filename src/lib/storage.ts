@@ -55,7 +55,3 @@ function migrate(parsed: { version?: number } & Record<string, unknown>): Pantry
 export function save(data: PantryData): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
 }
-
-export function clearAll(): void {
-  localStorage.removeItem(STORAGE_KEY)
-}
