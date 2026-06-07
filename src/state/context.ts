@@ -1,5 +1,5 @@
 import { createContext } from 'react'
-import type { Aisle, GroceryItem, ID, PantryData, Recipe } from '../types'
+import type { Aisle, DayOfWeek, GroceryItem, ID, PantryData, Recipe } from '../types'
 
 export type RecipeInput = Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>
 export type GroceryItemInput = Omit<GroceryItem, 'id'>
@@ -31,6 +31,13 @@ export interface PantryContextValue {
   renameAisle: (id: ID, name: string) => void
   deleteAisle: (id: ID) => DeleteResult
   moveAisle: (id: ID, direction: 'up' | 'down') => void
+
+  // Weekly plan
+  addMeal: (recipeId: ID, day?: DayOfWeek) => void
+  removeMeal: (mealId: ID) => void
+  setMealDay: (mealId: ID, day?: DayOfWeek) => void
+  setMealServings: (mealId: ID, servings?: number) => void
+  clearPlan: () => void
 }
 
 export const PantryContext = createContext<PantryContextValue | null>(null)

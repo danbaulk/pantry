@@ -1,58 +1,19 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { usePantry } from '../state/usePantry'
-import { btnPrimary, btnSecondary, card, input } from './ui'
+import { allTags, emptyRecipeFilters, filterRecipes, type RecipeFilters } from '../lib/recipeSearch'
+import { RecipeFilterBar } from './RecipeFilterBar'
+import { btnPrimary, btnSecondary, card } from './ui'
 
 export function RecipeList() {
   const { data, getItem } = usePantry()
-  const [search, setSearch] = useState('')
-  const [favOnly, setFavOnly] = useState(false)
-  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [filters, setFilters] = useState<RecipeFilters>(emptyRecipeFilters)
 
-  // Unique tag set across the library, for the filter chips.
-  const allTags = useMemo(
-    () => [...new Set(data.recipes.flatMap((r) => r.tags))].sort((a, b) => a.localeCompare(b)),
-    [data.recipes],
+  const tags = useMemo(() => allTags(data.recipes), [data.recipes])
+  const recipes = useMemo(
+    () => filterRecipes(data.recipes, getItem, filters),
+    [data.recipes, getItem, filters],
   )
-
-  const hasFilters = search.trim() !== '' || favOnly || selectedTags.length > 0
-
-  function toggleTag(tag: string) {
-    setSelectedTags((tags) =>
-      tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag],
-    )
-  }
-
-  function clearFilters() {
-    setSearch('')
-    setFavOnly(false)
-    setSelectedTags([])
-  }
-
-  const recipes = useMemo(() => {
-    const term = search.trim().toLowerCase()
-    return data.recipes
-      .filter((r) => {
-        if (favOnly && !r.favourite) return false
-        // Tag chips: match any selected tag (OR).
-        if (selectedTags.length > 0 && !r.tags.some((t) => selectedTags.includes(t))) {
-          return false
-        }
-        if (term) {
-          // Search name, tags, and resolved ingredient item names.
-          const haystack = [
-            r.name,
-            ...r.tags,
-            ...r.ingredients.map((ing) => getItem(ing.itemId)?.name ?? ''),
-          ]
-            .join(' ')
-            .toLowerCase()
-          if (!haystack.includes(term)) return false
-        }
-        return true
-      })
-      .sort((a, b) => a.name.localeCompare(b.name))
-  }, [data.recipes, search, favOnly, selectedTags, getItem])
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -77,52 +38,8 @@ export function RecipeList() {
         </div>
       ) : (
         <>
-          <div className="mb-4 space-y-3">
-            <input
-              className={input}
-              placeholder="Search name, tag, or ingredient…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setFavOnly((v) => !v)}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                  favOnly
-                    ? 'bg-green-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                ⭐ Favourites
-              </button>
-              {allTags.map((tag) => {
-                const active = selectedTags.includes(tag)
-                return (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => toggleTag(tag)}
-                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                      active
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                )
-              })}
-              {hasFilters && (
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  className="px-2 py-1 text-xs font-medium text-gray-500 underline hover:text-gray-700"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
+          <div className="mb-4">
+            <RecipeFilterBar filters={filters} onChange={setFilters} allTags={tags} />
           </div>
 
           {recipes.length === 0 ? (

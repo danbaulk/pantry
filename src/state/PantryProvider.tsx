@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { Aisle, GroceryItem, ID, PantryData, Recipe } from '../types'
+import type { Aisle, DayOfWeek, GroceryItem, ID, PantryData, PlannedMeal, Recipe } from '../types'
 import { load, save } from '../lib/storage'
 import { newId } from '../lib/ids'
 import {
@@ -54,7 +54,12 @@ export function PantryProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const deleteRecipe = useCallback((id: ID) => {
-    setData((d) => ({ ...d, recipes: d.recipes.filter((r) => r.id !== id) }))
+    // Cascade: drop any planned meals for this recipe so the plan keeps no dangling refs.
+    setData((d) => ({
+      ...d,
+      recipes: d.recipes.filter((r) => r.id !== id),
+      plan: { ...d.plan, meals: d.plan.meals.filter((m) => m.recipeId !== id) },
+    }))
   }, [])
 
   // --- Grocery items ---
@@ -131,6 +136,43 @@ export function PantryProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  // --- Weekly plan ---
+  const addMeal = useCallback((recipeId: ID, day?: DayOfWeek) => {
+    const meal: PlannedMeal = { id: newId(), recipeId, day }
+    setData((d) => ({ ...d, plan: { ...d.plan, meals: [...d.plan.meals, meal] } }))
+  }, [])
+
+  const removeMeal = useCallback((mealId: ID) => {
+    setData((d) => ({
+      ...d,
+      plan: { ...d.plan, meals: d.plan.meals.filter((m) => m.id !== mealId) },
+    }))
+  }, [])
+
+  const setMealDay = useCallback((mealId: ID, day?: DayOfWeek) => {
+    setData((d) => ({
+      ...d,
+      plan: {
+        ...d.plan,
+        meals: d.plan.meals.map((m) => (m.id === mealId ? { ...m, day } : m)),
+      },
+    }))
+  }, [])
+
+  const setMealServings = useCallback((mealId: ID, servings?: number) => {
+    setData((d) => ({
+      ...d,
+      plan: {
+        ...d.plan,
+        meals: d.plan.meals.map((m) => (m.id === mealId ? { ...m, servings } : m)),
+      },
+    }))
+  }, [])
+
+  const clearPlan = useCallback(() => {
+    setData((d) => ({ ...d, plan: { ...d.plan, meals: [] } }))
+  }, [])
+
   const value: PantryContextValue = useMemo(
     () => ({
       data,
@@ -148,6 +190,11 @@ export function PantryProvider({ children }: { children: ReactNode }) {
       renameAisle,
       deleteAisle,
       moveAisle,
+      addMeal,
+      removeMeal,
+      setMealDay,
+      setMealServings,
+      clearPlan,
     }),
     [
       data,
@@ -165,6 +212,11 @@ export function PantryProvider({ children }: { children: ReactNode }) {
       renameAisle,
       deleteAisle,
       moveAisle,
+      addMeal,
+      removeMeal,
+      setMealDay,
+      setMealServings,
+      clearPlan,
     ],
   )
 

@@ -36,9 +36,25 @@ export interface Recipe {
   updatedAt: string
 }
 
+export type DayOfWeek = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'
+
+export interface PlannedMeal {
+  id: ID
+  recipeId: ID
+  /** Undefined means the meal sits in the unassigned bucket. */
+  day?: DayOfWeek
+  /** Per-meal serving override; undefined falls back to the recipe default. */
+  servings?: number
+}
+
+export interface WeeklyPlan {
+  meals: PlannedMeal[]
+}
+
 export interface PantryData {
-  version: 1
+  version: 2
   aisles: Aisle[]
   groceryItems: GroceryItem[]
   recipes: Recipe[]
+  plan: WeeklyPlan
 }
