@@ -2,6 +2,7 @@ import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { RecipeList } from './components/RecipeList'
 import { RecipeDetail } from './components/RecipeDetail'
 import { RecipeEditor } from './components/RecipeEditor'
+import { RecipeImport } from './components/RecipeImport'
 import { CatalogueManager } from './components/CatalogueManager'
 import { AisleManager } from './components/AisleManager'
 import { UnitDatalist } from './components/UnitDatalist'
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/recipes" replace />} />
           <Route path="/recipes" element={<RecipeList />} />
           <Route path="/recipes/new" element={<RecipeEditor />} />
+          <Route path="/recipes/import" element={<RecipeImport />} />
           <Route path="/recipes/:id" element={<RecipeDetail />} />
           <Route path="/recipes/:id/edit" element={<RecipeEditor />} />
           <Route path="/catalogue" element={<CatalogueManager />} />
