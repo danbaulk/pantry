@@ -79,5 +79,11 @@ export function buildSeedData(): PantryData {
     return { id: newId(), name, aisleId: aisle.id, defaultUnit }
   })
 
-  return { version: 1, aisles, groceryItems, recipes: [] }
+  return {
+    version: 2,
+    aisles,
+    groceryItems,
+    recipes: [],
+    plan: { meals: [] },
+  }
 }

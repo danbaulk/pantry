@@ -193,3 +193,11 @@ basket rather than just a personal tool.
   by Phase 4.
 - **2026-06-07** — Folded in the original ideation doc `docs/the-pantry-plan.md` (now
   removed as redundant); this plan is the single source of truth.
+- **2026-06-07** — Phase 3 planner shipped as a **single rolling current-week plan** (no
+  history), presented as a **calendar of the coming Mon→Sun week** and set as the app's
+  **home page** (swapped with Recipes). You **click a day to add recipes** to it; each
+  planned meal can be **scaled per day** (a servings override on top of the recipe's
+  default). **No household-size setting** — scaling is per-meal only. Deleting a recipe
+  **cascades** to remove its planned meals (the plan is transient data, unlike the
+  catalogue's blocking delete guards). Data `version` bumped to **2** with a v1→v2
+  migration in `storage.ts`.

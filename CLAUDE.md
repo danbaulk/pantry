@@ -61,7 +61,7 @@ from context for display; `moveAisle` reassigns contiguous `order` values on eac
 
 ## Conventions
 
-- Routes live in `src/App.tsx`; unknown paths redirect to `/recipes`.
+- Routes live in `src/App.tsx`; the home page is the planner and unknown paths redirect to `/planner`.
 - Shared Tailwind class strings (`btn`, `btnPrimary`, `input`, `card`, …) live in
   `src/components/ui.ts` — reuse these instead of re-writing class strings.
 - `UNITS` (`src/lib/units.ts`) is a **suggestion list only** (datalist), not a constraint;
