@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import type { Ingredient } from '../types'
 import { usePantry } from '../state/usePantry'
 import type { RecipeInput } from '../state/context'
@@ -8,21 +8,28 @@ import { btnPrimary, btnSecondary, card, input, label } from './ui'
 
 export function RecipeEditor() {
   const { id } = useParams<{ id: string }>()
+  const location = useLocation()
   const navigate = useNavigate()
   const { getRecipe, createRecipe, updateRecipe } = usePantry()
 
   const existing = id ? getRecipe(id) : undefined
   const isEdit = Boolean(existing)
 
-  const [name, setName] = useState(existing?.name ?? '')
-  const [description, setDescription] = useState(existing?.description ?? '')
-  const [servings, setServings] = useState(existing?.servings ?? 2)
-  const [instructions, setInstructions] = useState(existing?.instructions ?? '')
-  const [tagsText, setTagsText] = useState((existing?.tags ?? []).join(', '))
-  const [favourite, setFavourite] = useState(existing?.favourite ?? false)
-  const [notes, setNotes] = useState(existing?.notes ?? '')
-  const [source, setSource] = useState(existing?.source ?? '')
-  const [ingredients, setIngredients] = useState<Ingredient[]>(existing?.ingredients ?? [])
+  // When creating, an imported draft can seed the form (see RecipeImport).
+  const draft = existing
+    ? undefined
+    : (location.state as { draft?: RecipeInput } | null)?.draft
+  const initial = existing ?? draft
+
+  const [name, setName] = useState(initial?.name ?? '')
+  const [description, setDescription] = useState(initial?.description ?? '')
+  const [servings, setServings] = useState(initial?.servings ?? 2)
+  const [instructions, setInstructions] = useState(initial?.instructions ?? '')
+  const [tagsText, setTagsText] = useState((initial?.tags ?? []).join(', '))
+  const [favourite, setFavourite] = useState(initial?.favourite ?? false)
+  const [notes, setNotes] = useState(initial?.notes ?? '')
+  const [source, setSource] = useState(initial?.source ?? '')
+  const [ingredients, setIngredients] = useState<Ingredient[]>(initial?.ingredients ?? [])
   const [error, setError] = useState<string | null>(null)
 
   // Editing a route id that doesn't resolve to a recipe.
