@@ -6,6 +6,7 @@ import { RecipeImport } from './components/RecipeImport'
 import { CatalogueManager } from './components/CatalogueManager'
 import { AisleManager } from './components/AisleManager'
 import { WeeklyPlanner } from './components/WeeklyPlanner'
+import { ShoppingList } from './components/ShoppingList'
 
 const navLink = ({ isActive }: { isActive: boolean }) =>
   `rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
@@ -23,6 +24,9 @@ export default function App() {
           <nav className="flex gap-1">
             <NavLink to="/planner" className={navLink}>
               Planner
+            </NavLink>
+            <NavLink to="/shopping" className={navLink}>
+              Shopping
             </NavLink>
             <NavLink to="/recipes" className={navLink}>
               Recipes
@@ -46,6 +50,7 @@ export default function App() {
           <Route path="/recipes/:id" element={<RecipeDetail />} />
           <Route path="/recipes/:id/edit" element={<RecipeEditor />} />
           <Route path="/planner" element={<WeeklyPlanner />} />
+          <Route path="/shopping" element={<ShoppingList />} />
           <Route path="/catalogue" element={<CatalogueManager />} />
           <Route path="/aisles" element={<AisleManager />} />
           <Route path="*" element={<Navigate to="/planner" replace />} />

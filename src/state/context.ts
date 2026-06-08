@@ -38,6 +38,10 @@ export interface PantryContextValue {
   setMealDay: (mealId: ID, day?: DayOfWeek) => void
   setMealServings: (mealId: ID, servings?: number) => void
   clearPlan: () => void
+
+  // Shopping list (derived from the plan; user records what they already have)
+  setHave: (lineKey: string, quantity: number) => void
+  clearHave: () => void
 }
 
 export const PantryContext = createContext<PantryContextValue | null>(null)

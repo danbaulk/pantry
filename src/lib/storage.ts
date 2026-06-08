@@ -29,26 +29,44 @@ export function load(): PantryData {
   }
 }
 
+const CURRENT_VERSION = 3
+
+type AnyBlob = { version?: number } & Record<string, unknown>
+
 /**
- * Bring a stored blob up to the current version. Each step backfills the fields a
- * version introduced; unknown versions throw so the caller can re-seed.
+ * Bring a stored blob up to the current version, applying one step at a time so an
+ * old blob chains through every upgrade (v1→v2→v3). Each step backfills the fields
+ * its version introduced; an unknown version throws so the caller can re-seed.
  */
-function migrate(parsed: { version?: number } & Record<string, unknown>): PantryData {
-  switch (parsed.version) {
+function migrate(parsed: AnyBlob): PantryData {
+  let blob = parsed
+  while (blob.version !== CURRENT_VERSION) {
+    blob = step(blob)
+  }
+  // Defensively coerce fields in case a current-version blob predates them, or
+  // carries a superseded shape (e.g. an early Phase-4 `shopping` shape before
+  // `have` became a keyed map). Anything malformed resets to a safe empty value,
+  // so old local dev blobs self-heal on load.
+  const data = blob as unknown as PantryData
+  const s = data.shopping as Partial<PantryData['shopping']> | undefined
+  const validShopping = !!s && typeof s.have === 'object' && s.have !== null && !Array.isArray(s.have)
+  return {
+    ...data,
+    plan: data.plan && Array.isArray(data.plan.meals) ? data.plan : { meals: [] },
+    shopping: validShopping ? { have: data.shopping.have } : { have: {} },
+  }
+}
+
+function step(blob: AnyBlob): AnyBlob {
+  switch (blob.version) {
     case 1:
       // v2 introduced the weekly plan (Phase 3).
-      return {
-        ...parsed,
-        version: 2,
-        plan: { meals: [] },
-      } as unknown as PantryData
-    case 2: {
-      // Defensively backfill in case an older v2 blob predates a field.
-      const data = parsed as unknown as PantryData
-      return { ...data, plan: data.plan ?? { meals: [] } }
-    }
+      return { ...blob, version: 2, plan: { meals: [] } }
+    case 2:
+      // v3 introduced the shopping list (Phase 4).
+      return { ...blob, version: 3, shopping: { have: {} } }
     default:
-      throw new Error(`Unsupported pantry data version: ${parsed.version}`)
+      throw new Error(`Unsupported pantry data version: ${blob.version}`)
   }
 }
 

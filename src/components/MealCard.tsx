@@ -1,10 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { PlannedMeal } from '../types'
 import { usePantry } from '../state/usePantry'
-import { btnDanger } from './ui'
-
-const stepBtn =
-  'flex h-6 w-6 items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40'
+import { btnDanger, stepBtn } from './ui'
 
 /** A planned meal in the week grid: recipe link, remove, and a servings stepper. */
 export function MealCard({ meal }: { meal: PlannedMeal }) {

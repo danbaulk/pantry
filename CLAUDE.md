@@ -6,11 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The Pantry is a **personal, local-first** meal-planning app (single author, no accounts).
 The end goal is that the **weekly shopping list builds itself**: pick meals, get an
-aisle-grouped, scaled, unit-summed list. **Phases 1–3 are done**: the recipe library +
-grocery catalogue (Phase 1), recipe search/tag filtering + paste-import (Phase 2), and the
-manual weekly planner with per-meal serving overrides (Phase 3). The **shopping list is
-Phase 4** (next); randomiser/suggestions/allergies and nutrition are later phases. See
-`docs/PROJECT_PLAN.md` for the full roadmap before starting a new phase.
+aisle-grouped, scaled, unit-summed list. **Phases 1–4 are done**: the recipe library +
+grocery catalogue (Phase 1), recipe search/tag filtering + paste-import (Phase 2), the
+manual weekly planner with per-meal serving overrides (Phase 3), and the **shopping list**
+that derives an aisle-grouped, scaled, unit-summed checklist from the plan with ad-hoc
+items, "already have", and tick-off (Phase 4). The randomiser/suggestions/allergies and
+nutrition are later phases. See `docs/PROJECT_PLAN.md` for the full roadmap before starting
+a new phase.
 
 ## Commands
 
@@ -51,6 +53,21 @@ Mutations live on the context: `addMeal`, `removeMeal`, `setMealDay`, `setMealSe
 plan never holds a dangling `recipeId`; the planner also defensively skips meals whose recipe
 no longer resolves. There is no integrity guard blocking recipe deletion (unlike items/aisles).
 
+**The shopping list is fully derived from the plan; the user only stores reconciliation
+input.** `PantryData.shopping` is `{ have }` — a `Record<lineKey, number>` of how much of
+each requirement you already own (`lineKey` is `` `${itemId}::${unit}` ``).
+`buildShoppingList()` (`src/lib/shoppingList.ts`) computes the buy list live: it scales each
+meal's ingredients by `(servings ?? recipe.servings) / recipe.servings` and sums per
+`(itemId, unit)` (`buildRequirements`), then subtracts `have`, **dropping lines that net to
+≤ 0**. Mismatched units stay separate (no conversion). Grouping mirrors `buildItemsByAisle`
+(with an "Other" fallback for an unresolvable item). The page (`ShoppingList.tsx`) is a
+**two-column layout**: the aisle-grouped buy list (plain text, no checkboxes), and an
+**"Already have" column** with one row per recipe requirement (`buildHaveRows`, recipe items
+only — never the whole catalogue). Each row has −/+ steppers plus a ✓ that **maxes `have` to
+`need`** (the way to "tick off" a line — it nets to zero and leaves the buy list); − brings
+it back. Context mutations: `setHave(lineKey, qty)` (0 deletes the key) and `clearHave()`
+(the "Reset already have" button). (A "Want extra" section is parked.)
+
 **State flows through one React context.** `PantryProvider` (`src/state/PantryProvider.tsx`)
 holds the entire `PantryData` in one `useState` and exposes all reads/mutations via
 `PantryContextValue` (`src/state/context.ts`). Components consume it with the `usePantry()`
@@ -61,10 +78,11 @@ recipe edits.
 **Persistence is isolated to `src/lib/storage.ts`** (localStorage key `pantry:data`).
 `PantryProvider` auto-saves the whole blob on every change via an effect (skipping the
 initial load). On first run or on a parse failure, `buildSeedData()` (`src/lib/seed.ts`)
-seeds starter aisles + grocery items. `PantryData.version` is currently `2`; on load,
-`migrate()` upgrades older blobs step-by-step (v1→v2 backfilled the empty `plan`) and an
-unknown version throws → re-seed. When the shape changes, **bump the version and add a new
-`case` to `migrate()`** that backfills the new fields. This file is the intended swap point
+seeds starter aisles + grocery items. `PantryData.version` is currently `3`; on load,
+`migrate()` upgrades older blobs one step at a time via `step()` (v1→v2 backfilled the empty
+`plan`, v2→v3 the empty `shopping` list) so an old blob chains all the way up; an unknown
+version throws → re-seed. When the shape changes, **bump `CURRENT_VERSION` and add a new
+`case` to `step()`** that backfills the new fields. This file is the intended swap point
 for a real backend later, so keep persistence out of components.
 
 **Aisle ordering:** aisles carry an `order` field (store walk-order). Use `sortedAisles`
@@ -74,14 +92,15 @@ from context for display; `moveAisle` reassigns contiguous `order` values on eac
 
 - Routes live in `src/App.tsx`; the home page is the planner and unknown paths redirect to `/planner`.
 - Shared Tailwind class strings (`btn`, `btnPrimary`, `input`, `card`, `label`, `labelSmall`,
-  `ingredientRow`, `tagBadge`, …) live in `src/components/ui.ts` — reuse these instead of
-  re-writing class strings.
+  `ingredientRow`, `tagBadge`, `stepBtn`, …) live in `src/components/ui.ts` — reuse these
+  instead of re-writing class strings.
 - Reuse the shared helpers rather than re-deriving them:
   - `buildItemsByAisle(sortedAisles, groceryItems)` (`src/lib/itemsByAisle.ts`) groups catalogue
     items by aisle for any picker/list; `<ItemSelect>` renders that grouping as a `<select>` with
     the `NEW_ITEM` quick-add sentinel (`src/lib/constants.ts`). `<AisleSelect>` and `<UnitSelect>`
     are the picker components for aisle / unit fields (both with a disabled placeholder option).
-  - `parseTags(text)` (`src/lib/tags.ts`) and `pluralize(word, count)` (`src/lib/format.ts`).
+  - `parseTags(text)` (`src/lib/tags.ts`); `pluralize(word, count)`, `formatQuantity(n)` and
+    `roundQuantity(n)` (`src/lib/format.ts`) — use these for any displayed/scaled quantity.
   - Recipe form state goes through `useRecipeForm` (`src/hooks/useRecipeForm.ts`); build the save
     payload with `formToRecipeInput(state)`. Used by `RecipeEditor` — which is also the import
     target: `RecipeImport` parses pasted text straight into an editor draft (no separate review

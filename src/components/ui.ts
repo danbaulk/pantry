@@ -22,3 +22,7 @@ export const ingredientRow = 'space-y-2 rounded-md border border-gray-200 p-3'
 
 /** Small rounded tag/label badge (recipe tags). */
 export const tagBadge = 'rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600'
+
+/** Square 6×6 stepper button (− / + / ✓ controls). */
+export const stepBtn =
+  'flex h-6 w-6 items-center justify-center rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40'
