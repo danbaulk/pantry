@@ -1,30 +1,35 @@
 import { useState } from 'react'
 import type { GroceryItem, Ingredient } from '../types'
 import { usePantry } from '../state/usePantry'
+import { buildItemsByAisle } from '../lib/itemsByAisle'
+import { NEW_ITEM } from '../lib/constants'
+import { pluralize } from '../lib/format'
 import { GroceryItemQuickAdd } from './GroceryItemQuickAdd'
-import { btnDanger, btnSecondary, input, label } from './ui'
+import { ItemSelect } from './ItemSelect'
+import { UnitSelect } from './UnitSelect'
+import { btnDanger, btnSecondary, ingredientRow, input, label, labelSmall } from './ui'
 
 interface Props {
   ingredients: Ingredient[]
   onChange: (ingredients: Ingredient[]) => void
+  /** Parsed names by row index (import flow), used to label unmatched rows. */
+  hints?: string[]
 }
 
-const NEW_ITEM = '__new__'
-
-export function IngredientEditor({ ingredients, onChange }: Props) {
+export function IngredientEditor({ ingredients, onChange, hints: initialHints }: Props) {
   const { data, sortedAisles, getItem } = usePantry()
   // Which row index is currently showing the quick-add form.
   const [quickAddRow, setQuickAddRow] = useState<number | null>(null)
+  // Parsed-name hints kept in lockstep with rows (add/remove) so they never drift.
+  const [hints, setHints] = useState<(string | undefined)[]>(() =>
+    ingredients.map((_, i) => initialHints?.[i]),
+  )
 
   // Grocery items grouped by aisle for the dropdown.
-  const itemsByAisle = sortedAisles
-    .map((aisle) => ({
-      aisle,
-      items: data.groceryItems
-        .filter((i) => i.aisleId === aisle.id)
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    }))
-    .filter((g) => g.items.length > 0)
+  const itemsByAisle = buildItemsByAisle(sortedAisles, data.groceryItems)
+
+  // Rows with no catalogue item picked yet — flagged so they can't be missed.
+  const unresolved = ingredients.filter((ing) => !ing.itemId).length
 
   function updateRow(idx: number, patch: Partial<Ingredient>) {
     onChange(ingredients.map((ing, i) => (i === idx ? { ...ing, ...patch } : ing)))
@@ -32,10 +37,12 @@ export function IngredientEditor({ ingredients, onChange }: Props) {
 
   function removeRow(idx: number) {
     onChange(ingredients.filter((_, i) => i !== idx))
+    setHints((h) => h.filter((_, i) => i !== idx))
   }
 
   function addRow() {
     onChange([...ingredients, { itemId: '', quantity: 1, unit: '' }])
+    setHints((h) => [...h, undefined])
   }
 
   function handleSelect(idx: number, value: string) {
@@ -66,35 +73,37 @@ export function IngredientEditor({ ingredients, onChange }: Props) {
         </p>
       )}
 
+      {unresolved > 0 && (
+        <p className="mb-2 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          ⚠ {unresolved} {pluralize('ingredient', unresolved)} still{' '}
+          {unresolved === 1 ? 'needs' : 'need'} a catalogue item — pick one or add it below.
+        </p>
+      )}
+
       <ul className="space-y-3">
-        {ingredients.map((ing, idx) => (
-          <li key={idx} className="space-y-2 rounded-md border border-gray-200 p-3">
+        {ingredients.map((ing, idx) => {
+          const hint = !ing.itemId ? hints[idx] : undefined
+          return (
+          <li
+            key={idx}
+            className={`${ingredientRow}${ing.itemId ? '' : ' bg-amber-50/40 ring-1 ring-amber-300'}`}
+          >
+            {hint && (
+              <p className="text-xs text-amber-700">Unmatched: “{hint}” — pick or add it.</p>
+            )}
             <div className="flex flex-wrap items-end gap-2">
               <div className="min-w-[12rem] flex-1">
-                <span className="mb-1 block text-xs text-gray-500">Item</span>
-                <select
-                  className={input}
-                  value={ing.itemId || ''}
-                  onChange={(e) => handleSelect(idx, e.target.value)}
-                >
-                  <option value="" disabled>
-                    Pick a grocery item…
-                  </option>
-                  {itemsByAisle.map(({ aisle, items }) => (
-                    <optgroup key={aisle.id} label={aisle.name}>
-                      {items.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.name}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                  <option value={NEW_ITEM}>+ Add new grocery item…</option>
-                </select>
+                <span className={labelSmall}>Item</span>
+                <ItemSelect
+                  value={ing.itemId}
+                  invalid={!ing.itemId}
+                  itemsByAisle={itemsByAisle}
+                  onChange={(value) => handleSelect(idx, value)}
+                />
               </div>
 
               <div className="w-24">
-                <span className="mb-1 block text-xs text-gray-500">Qty</span>
+                <span className={labelSmall}>Qty</span>
                 <input
                   type="number"
                   min="0"
@@ -106,13 +115,8 @@ export function IngredientEditor({ ingredients, onChange }: Props) {
               </div>
 
               <div className="w-28">
-                <span className="mb-1 block text-xs text-gray-500">Unit</span>
-                <input
-                  className={input}
-                  list="unit-options"
-                  value={ing.unit}
-                  onChange={(e) => updateRow(idx, { unit: e.target.value })}
-                />
+                <span className={labelSmall}>Unit</span>
+                <UnitSelect value={ing.unit} onChange={(unit) => updateRow(idx, { unit })} />
               </div>
 
               <button type="button" className={btnDanger} onClick={() => removeRow(idx)}>
@@ -122,12 +126,14 @@ export function IngredientEditor({ ingredients, onChange }: Props) {
 
             {quickAddRow === idx && (
               <GroceryItemQuickAdd
+                initialName={hints[idx]}
                 onAdded={(item) => handleQuickAdded(idx, item)}
                 onCancel={() => setQuickAddRow(null)}
               />
             )}
           </li>
-        ))}
+          )
+        })}
       </ul>
 
       <button type="button" className={`${btnSecondary} mt-3`} onClick={addRow}>

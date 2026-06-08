@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { usePantry } from '../state/usePantry'
 import { allTags, emptyRecipeFilters, filterRecipes, type RecipeFilters } from '../lib/recipeSearch'
 import { RecipeFilterBar } from './RecipeFilterBar'
-import { btnPrimary, btnSecondary, card } from './ui'
+import { btnPrimary, btnSecondary, card, tagBadge } from './ui'
 
 export function RecipeList() {
   const { data, getItem } = usePantry()
@@ -59,10 +59,7 @@ export function RecipeList() {
                     {r.tags.length > 0 && (
                       <span className="flex flex-wrap gap-1">
                         {r.tags.map((t) => (
-                          <span
-                            key={t}
-                            className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
-                          >
+                          <span key={t} className={tagBadge}>
                             {t}
                           </span>
                         ))}

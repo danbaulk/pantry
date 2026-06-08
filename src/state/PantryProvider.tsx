@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import type { Aisle, DayOfWeek, GroceryItem, ID, PantryData, PlannedMeal, Recipe } from '../types'
 import { load, save } from '../lib/storage'
 import { newId } from '../lib/ids'
+import { pluralize } from '../lib/format'
 import {
   PantryContext,
   type DeleteResult,
@@ -82,7 +83,7 @@ export function PantryProvider({ children }: { children: ReactNode }) {
       if (usedBy.length > 0) {
         return {
           ok: false,
-          reason: `Used by ${usedBy.length} recipe${usedBy.length > 1 ? 's' : ''}: ${usedBy
+          reason: `Used by ${usedBy.length} ${pluralize('recipe', usedBy.length)}: ${usedBy
             .map((r) => r.name)
             .join(', ')}`,
         }
@@ -113,7 +114,7 @@ export function PantryProvider({ children }: { children: ReactNode }) {
       if (usedBy.length > 0) {
         return {
           ok: false,
-          reason: `${usedBy.length} grocery item${usedBy.length > 1 ? 's' : ''} still in this aisle`,
+          reason: `${usedBy.length} ${pluralize('grocery item', usedBy.length)} still in this aisle`,
         }
       }
       setData((d) => ({ ...d, aisles: d.aisles.filter((a) => a.id !== id) }))

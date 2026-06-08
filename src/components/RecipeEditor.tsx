@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import type { Ingredient } from '../types'
 import { usePantry } from '../state/usePantry'
 import type { RecipeInput } from '../state/context'
+import { formToRecipeInput, useRecipeForm } from '../hooks/useRecipeForm'
 import { IngredientEditor } from './IngredientEditor'
+import { ErrorMessage } from './ErrorMessage'
 import { btnPrimary, btnSecondary, card, input, label } from './ui'
 
 export function RecipeEditor() {
@@ -15,21 +16,13 @@ export function RecipeEditor() {
   const existing = id ? getRecipe(id) : undefined
   const isEdit = Boolean(existing)
 
-  // When creating, an imported draft can seed the form (see RecipeImport).
-  const draft = existing
-    ? undefined
-    : (location.state as { draft?: RecipeInput } | null)?.draft
-  const initial = existing ?? draft
+  // When creating, an imported draft can seed the form (see RecipeImport); its
+  // `hints` carry the parsed name for each ingredient so unmatched rows are labelled.
+  const navState = existing ? null : (location.state as { draft?: RecipeInput; hints?: string[] } | null)
+  const draft = navState?.draft
+  const hints = navState?.hints
 
-  const [name, setName] = useState(initial?.name ?? '')
-  const [description, setDescription] = useState(initial?.description ?? '')
-  const [servings, setServings] = useState(initial?.servings ?? 2)
-  const [instructions, setInstructions] = useState(initial?.instructions ?? '')
-  const [tagsText, setTagsText] = useState((initial?.tags ?? []).join(', '))
-  const [favourite, setFavourite] = useState(initial?.favourite ?? false)
-  const [notes, setNotes] = useState(initial?.notes ?? '')
-  const [source, setSource] = useState(initial?.source ?? '')
-  const [ingredients, setIngredients] = useState<Ingredient[]>(initial?.ingredients ?? [])
+  const { state, set } = useRecipeForm(existing ?? draft)
   const [error, setError] = useState<string | null>(null)
 
   // Editing a route id that doesn't resolve to a recipe.
@@ -43,31 +36,16 @@ export function RecipeEditor() {
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim()) {
+    if (!state.name.trim()) {
       setError('Please give the recipe a name.')
       return
     }
-    if (ingredients.some((ing) => !ing.itemId)) {
+    if (state.ingredients.some((ing) => !ing.itemId)) {
       setError('Every ingredient needs a grocery item selected (or remove the empty row).')
       return
     }
 
-    const tags = tagsText
-      .split(',')
-      .map((t) => t.trim())
-      .filter(Boolean)
-
-    const payload: RecipeInput = {
-      name: name.trim(),
-      description: description.trim() || undefined,
-      servings: Number(servings) || 1,
-      instructions: instructions.trim() || undefined,
-      tags,
-      favourite,
-      notes: notes.trim() || undefined,
-      source: source.trim() || undefined,
-      ingredients,
-    }
+    const payload = formToRecipeInput(state)
 
     if (existing) {
       updateRecipe(existing.id, payload)
@@ -84,22 +62,24 @@ export function RecipeEditor() {
         {isEdit ? 'Edit recipe' : 'New recipe'}
       </h1>
 
-      {error && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
-      )}
+      <ErrorMessage message={error} />
 
       <div className={`${card} space-y-4`}>
         <div>
           <label className={label}>Name</label>
-          <input className={input} value={name} onChange={(e) => setName(e.target.value)} />
+          <input
+            className={input}
+            value={state.name}
+            onChange={(e) => set({ name: e.target.value })}
+          />
         </div>
 
         <div>
           <label className={label}>Description</label>
           <input
             className={input}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            value={state.description}
+            onChange={(e) => set({ description: e.target.value })}
             placeholder="Short one-liner (optional)"
           />
         </div>
@@ -111,8 +91,8 @@ export function RecipeEditor() {
               type="number"
               min="1"
               className={input}
-              value={servings}
-              onChange={(e) => setServings(Number(e.target.value))}
+              value={state.servings}
+              onChange={(e) => set({ servings: Number(e.target.value) })}
             />
           </div>
           <div className="flex items-end">
@@ -120,8 +100,8 @@ export function RecipeEditor() {
               <input
                 type="checkbox"
                 className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                checked={favourite}
-                onChange={(e) => setFavourite(e.target.checked)}
+                checked={state.favourite}
+                onChange={(e) => set({ favourite: e.target.checked })}
               />
               Favourite ⭐
             </label>
@@ -132,15 +112,19 @@ export function RecipeEditor() {
           <label className={label}>Tags</label>
           <input
             className={input}
-            value={tagsText}
-            onChange={(e) => setTagsText(e.target.value)}
+            value={state.tagsText}
+            onChange={(e) => set({ tagsText: e.target.value })}
             placeholder="comma, separated, tags"
           />
         </div>
       </div>
 
       <div className={card}>
-        <IngredientEditor ingredients={ingredients} onChange={setIngredients} />
+        <IngredientEditor
+          ingredients={state.ingredients}
+          onChange={(ingredients) => set({ ingredients })}
+          hints={hints}
+        />
       </div>
 
       <div className={`${card} space-y-4`}>
@@ -148,8 +132,8 @@ export function RecipeEditor() {
           <label className={label}>Instructions</label>
           <textarea
             className={`${input} min-h-32`}
-            value={instructions}
-            onChange={(e) => setInstructions(e.target.value)}
+            value={state.instructions}
+            onChange={(e) => set({ instructions: e.target.value })}
             placeholder="Step-by-step method (optional)"
           />
         </div>
@@ -157,8 +141,8 @@ export function RecipeEditor() {
           <label className={label}>Notes</label>
           <textarea
             className={`${input} min-h-20`}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            value={state.notes}
+            onChange={(e) => set({ notes: e.target.value })}
             placeholder="Anything else (optional)"
           />
         </div>
@@ -166,8 +150,8 @@ export function RecipeEditor() {
           <label className={label}>Source</label>
           <input
             className={input}
-            value={source}
-            onChange={(e) => setSource(e.target.value)}
+            value={state.source}
+            onChange={(e) => set({ source: e.target.value })}
             placeholder="Where it came from (optional)"
           />
         </div>

@@ -2,6 +2,8 @@ import { useState } from 'react'
 import type { GroceryItem } from '../types'
 import { usePantry } from '../state/usePantry'
 import { UNITS } from '../lib/units'
+import { UnitSelect } from './UnitSelect'
+import { AisleSelect } from './AisleSelect'
 import { btnPrimary, btnSecondary, input, label } from './ui'
 
 interface Props {
@@ -14,7 +16,10 @@ interface Props {
 /**
  * Inline quick-add for a new grocery item, used from the ingredient picker so
  * authoring a recipe never has to leave for the catalogue. Shares createItem with
- * CatalogueManager so write logic isn't duplicated.
+ * CatalogueManager so write logic isn't duplicated. It's a plain <div>, not a
+ * <form> — it renders inside the recipe editor's form, and a nested form would
+ * bubble its submit (and steal Enter) up to that outer form. Enter is handled
+ * locally instead.
  */
 export function GroceryItemQuickAdd({ initialName = '', onAdded, onCancel }: Props) {
   const { sortedAisles, createItem } = usePantry()
@@ -24,18 +29,14 @@ export function GroceryItemQuickAdd({ initialName = '', onAdded, onCancel }: Pro
 
   const canSave = name.trim() !== '' && aisleId !== ''
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  function handleAdd() {
     if (!canSave) return
     const item = createItem({ name: name.trim(), aisleId, defaultUnit: unit })
     onAdded(item)
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-3 rounded-md border border-green-200 bg-green-50/50 p-3"
-    >
+    <div className="space-y-3 rounded-md border border-green-200 bg-green-50/50 p-3">
       <p className="text-sm font-medium text-gray-700">Quick-add grocery item</p>
       <div>
         <label className={label}>Name</label>
@@ -44,38 +45,34 @@ export function GroceryItemQuickAdd({ initialName = '', onAdded, onCancel }: Pro
           className={input}
           value={name}
           onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            // Enter adds the item without submitting the surrounding recipe form.
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              handleAdd()
+            }
+          }}
           placeholder="e.g. Smoked paprika"
         />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className={label}>Aisle</label>
-          <select className={input} value={aisleId} onChange={(e) => setAisleId(e.target.value)}>
-            {sortedAisles.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+          <AisleSelect value={aisleId} onChange={setAisleId} aisles={sortedAisles} />
         </div>
         <div>
           <label className={label}>Default unit</label>
-          <input
-            className={input}
-            list="unit-options"
-            value={unit}
-            onChange={(e) => setUnit(e.target.value)}
-          />
+          <UnitSelect value={unit} onChange={setUnit} />
         </div>
       </div>
       <div className="flex gap-2">
-        <button type="submit" className={btnPrimary} disabled={!canSave}>
+        <button type="button" className={btnPrimary} disabled={!canSave} onClick={handleAdd}>
           Add &amp; use
         </button>
         <button type="button" className={btnSecondary} onClick={onCancel}>
           Cancel
         </button>
       </div>
-    </form>
+    </div>
   )
 }
