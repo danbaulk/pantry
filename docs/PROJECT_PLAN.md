@@ -1,6 +1,6 @@
 # The Pantry — Plan
 
-_Last updated: 2026-06-07 · Status: discovery_
+_Last updated: 2026-06-08 · Status: Phases 1–4 shipped_
 
 ## What this is
 
@@ -181,6 +181,20 @@ basket rather than just a personal tool.
 
 ## Decisions log
 
+- **2026-06-08** — Phase 4 shopping list: **fully-derived buy list + an "Already have"
+  reconciliation column** (`PantryData.shopping = { have, checked }`). The list is always
+  computed from the plan — `buildShoppingList` scales each meal by `(servings ??
+  recipe.servings) / recipe.servings`, sums per (item, unit), then subtracts what the user
+  has, dropping lines that net to ≤ 0; mismatched units stay separate. The page is **two
+  columns**: the aisle-grouped buy list (plain text, no checkboxes) and an _Already have_
+  column with one row per recipe requirement (recipe items only). Each row has −/+ steppers
+  plus a ✓ that maxes `have` to `need` — that's how you "tick off" a line (it nets to zero and
+  drops off); − brings it back. `have` is a `Record<itemId::unit, number>` (the only stored
+  shopping state). **Superseded earlier attempts this session** — an always-live overlay, a
+  generated-then-editable snapshot with "Regenerate", and a three-section have/extra model;
+  this is dynamic (no staleness) and keeps "already have" scoped to the recipes. A **"Want
+  extra" section is parked** for later. Data `version` is **3** with an iterative `migrate()`;
+  the loader self-heals dev blobs carrying a superseded `shopping` shape.
 - **2026-06-07** — Form factor: **local web app** (laptop now, phone-shaped for later
   sync). Chosen over desktop/CLI to fit the eventual laptop-plan / phone-shop goal.
 - **2026-06-07** — Phase 1 trimmed to **recipe CRUD + grocery catalogue/aisle management**

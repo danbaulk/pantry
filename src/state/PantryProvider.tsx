@@ -174,6 +174,22 @@ export function PantryProvider({ children }: { children: ReactNode }) {
     setData((d) => ({ ...d, plan: { ...d.plan, meals: [] } }))
   }, [])
 
+  // --- Shopping list (derived from the plan; reconciled via "already have") ---
+  // Record how much of a requirement line (`itemId::unit`) the user already has.
+  // A quantity of 0 (or less) drops the key so the blob stays tidy.
+  const setHave = useCallback((lineKey: string, quantity: number) => {
+    setData((d) => {
+      const have = { ...d.shopping.have }
+      if (quantity > 0) have[lineKey] = quantity
+      else delete have[lineKey]
+      return { ...d, shopping: { ...d.shopping, have } }
+    })
+  }, [])
+
+  const clearHave = useCallback(() => {
+    setData((d) => ({ ...d, shopping: { ...d.shopping, have: {} } }))
+  }, [])
+
   const value: PantryContextValue = useMemo(
     () => ({
       data,
@@ -196,6 +212,8 @@ export function PantryProvider({ children }: { children: ReactNode }) {
       setMealDay,
       setMealServings,
       clearPlan,
+      setHave,
+      clearHave,
     }),
     [
       data,
@@ -218,6 +236,8 @@ export function PantryProvider({ children }: { children: ReactNode }) {
       setMealDay,
       setMealServings,
       clearPlan,
+      setHave,
+      clearHave,
     ],
   )
 

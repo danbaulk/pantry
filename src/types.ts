@@ -51,10 +51,22 @@ export interface WeeklyPlan {
   meals: PlannedMeal[]
 }
 
+/**
+ * Persisted shopping state. The list itself is always derived from the plan; this
+ * only stores the user's reconciliation input: `have` records how much of each
+ * recipe requirement the user already has, keyed by `itemId::unit`, and is
+ * subtracted from what the plan needs. Maxing an item out (have = need) is how a
+ * line is "ticked off" — it nets to zero and drops from the buy list.
+ */
+export interface ShoppingState {
+  have: Record<string, number>
+}
+
 export interface PantryData {
-  version: 2
+  version: 3
   aisles: Aisle[]
   groceryItems: GroceryItem[]
   recipes: Recipe[]
   plan: WeeklyPlan
+  shopping: ShoppingState
 }

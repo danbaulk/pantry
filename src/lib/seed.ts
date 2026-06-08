@@ -80,10 +80,11 @@ export function buildSeedData(): PantryData {
   })
 
   return {
-    version: 2,
+    version: 3,
     aisles,
     groceryItems,
     recipes: [],
     plan: { meals: [] },
+    shopping: { have: {} },
   }
 }
