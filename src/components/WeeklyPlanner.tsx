@@ -1,15 +1,20 @@
-import { useMemo, useState } from 'react'
-import type { DayOfWeek, PlannedMeal } from '../types'
+import { useEffect, useMemo, useState } from 'react'
+import type { DayOfWeek, ID, PlannedMeal, Recipe } from '../types'
 import { usePantry } from '../state/usePantry'
 import { DAYS, currentWeekDates, dayKey } from '../lib/days'
+import { pickRandomSuggestions, refillSuggestions } from '../lib/suggest'
+import { getDragPayload, hasDragPayload, type DragPayload } from '../lib/dnd'
 import { MealCard } from './MealCard'
 import { AddRecipeModal } from './AddRecipeModal'
+import { SuggestionStrip } from './SuggestionStrip'
 import { btnSecondary, card } from './ui'
 
 const fmtDate = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 
+const SUGGESTION_COUNT = 3
+
 export function WeeklyPlanner() {
-  const { data, getRecipe, clearPlan } = usePantry()
+  const { data, getRecipe, excludedItemIds, addMeal, setMealDay, clearPlan } = usePantry()
   const meals = data.plan.meals
   const [addingDay, setAddingDay] = useState<DayOfWeek | null>(null)
 
@@ -20,6 +25,44 @@ export function WeeklyPlanner() {
   const livingMeals = meals.filter((m) => getRecipe(m.recipeId))
   const mealsForDay = (day?: DayOfWeek) => livingMeals.filter((m) => m.day === day)
   const unassigned = mealsForDay(undefined)
+
+  const plannedRecipeIds = useMemo(() => new Set(meals.map((m) => m.recipeId)), [meals])
+
+  // The suggestion strip: random allergy-safe recipes not in the plan, draggable onto days.
+  const [suggestionIds, setSuggestionIds] = useState<ID[]>(() =>
+    refillSuggestions([], data.recipes, excludedItemIds, plannedRecipeIds, SUGGESTION_COUNT),
+  )
+
+  // Heal the strip whenever the world changes: drop suggestions that were deleted,
+  // planned (e.g. just dragged onto a day), or newly flagged, then top up the gaps.
+  useEffect(() => {
+    setSuggestionIds((ids) =>
+      refillSuggestions(ids, data.recipes, excludedItemIds, plannedRecipeIds, SUGGESTION_COUNT),
+    )
+  }, [data.recipes, excludedItemIds, plannedRecipeIds])
+
+  const suggestions = suggestionIds
+    .map((id) => getRecipe(id))
+    .filter((r): r is Recipe => r !== undefined)
+
+  function handleShuffle() {
+    setSuggestionIds(
+      pickRandomSuggestions(
+        data.recipes,
+        excludedItemIds,
+        plannedRecipeIds,
+        SUGGESTION_COUNT,
+        new Set(suggestionIds),
+      ).map((r) => r.id),
+    )
+  }
+
+  // A drop on a day: a suggestion becomes a planned meal (the healing effect then refills
+  // its slot), an existing meal moves to that day.
+  function handleDrop(payload: DragPayload, day?: DayOfWeek) {
+    if (payload.type === 'recipe') addMeal(payload.id, day)
+    else setMealDay(payload.id, day)
+  }
 
   return (
     <div className="space-y-4">
@@ -38,6 +81,8 @@ export function WeeklyPlanner() {
         )}
       </div>
 
+      <SuggestionStrip suggestions={suggestions} onShuffle={handleShuffle} />
+
       <div className="space-y-3">
         {DAYS.map((d) => (
           <DayRow
@@ -47,11 +92,19 @@ export function WeeklyPlanner() {
             isToday={d.key === todayKey}
             meals={mealsForDay(d.key)}
             onAdd={() => setAddingDay(d.key)}
+            onDrop={(payload) => handleDrop(payload, d.key)}
           />
         ))}
 
         {unassigned.length > 0 && (
-          <DayRow label="Unassigned" date="" isToday={false} meals={unassigned} onAdd={null} />
+          <DayRow
+            label="Unassigned"
+            date=""
+            isToday={false}
+            meals={unassigned}
+            onAdd={null}
+            onDrop={handleDrop}
+          />
         )}
       </div>
 
@@ -72,15 +125,42 @@ function DayRow({
   isToday,
   meals,
   onAdd,
+  onDrop,
 }: {
   label: string
   date: string
   isToday: boolean
   meals: PlannedMeal[]
   onAdd: (() => void) | null
+  onDrop: (payload: DragPayload) => void
 }) {
+  const [dragOver, setDragOver] = useState(false)
+
+  const highlight = dragOver
+    ? 'border-green-400 ring-2 ring-green-300'
+    : isToday
+      ? 'border-green-300 ring-1 ring-green-200'
+      : ''
+
   return (
-    <div className={`${card} ${isToday ? 'border-green-300 ring-1 ring-green-200' : ''}`}>
+    <div
+      className={`${card} ${highlight}`}
+      onDragOver={(e) => {
+        if (!hasDragPayload(e)) return
+        e.preventDefault()
+        setDragOver(true)
+      }}
+      onDragLeave={(e) => {
+        // dragleave also fires when moving onto a child — only clear on a real exit.
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false)
+      }}
+      onDrop={(e) => {
+        e.preventDefault()
+        setDragOver(false)
+        const payload = getDragPayload(e)
+        if (payload) onDrop(payload)
+      }}
+    >
       <h2 className="mb-2 text-sm font-semibold text-gray-700">
         {label}
         {date && <span className="ml-2 font-normal text-gray-400">{date}</span>}

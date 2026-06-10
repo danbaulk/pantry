@@ -2,11 +2,13 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { usePantry } from '../state/usePantry'
 import { allTags, emptyRecipeFilters, filterRecipes, type RecipeFilters } from '../lib/recipeSearch'
+import { recipeHasExcludedItem } from '../lib/suggest'
 import { RecipeFilterBar } from './RecipeFilterBar'
+import { AllergyBadge } from './AllergyBadge'
 import { btnPrimary, btnSecondary, card, tagBadge } from './ui'
 
 export function RecipeList() {
-  const { data, getItem } = usePantry()
+  const { data, getItem, excludedItemIds } = usePantry()
   const [filters, setFilters] = useState<RecipeFilters>(emptyRecipeFilters)
 
   const tags = useMemo(() => allTags(data.recipes), [data.recipes])
@@ -56,6 +58,7 @@ export function RecipeList() {
                   >
                     {r.favourite && <span title="Favourite">⭐</span>}
                     <span className="flex-1 font-medium text-gray-800">{r.name}</span>
+                    {recipeHasExcludedItem(r, excludedItemIds) && <AllergyBadge />}
                     {r.tags.length > 0 && (
                       <span className="flex flex-wrap gap-1">
                         {r.tags.map((t) => (

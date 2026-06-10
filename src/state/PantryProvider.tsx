@@ -35,6 +35,10 @@ export function PantryProvider({ children }: { children: ReactNode }) {
     () => [...data.aisles].sort((a, b) => a.order - b.order),
     [data.aisles],
   )
+  const excludedItemIds = useMemo(
+    () => new Set(data.settings.excludedItemIds),
+    [data.settings.excludedItemIds],
+  )
 
   // --- Recipes ---
   const createRecipe = useCallback((input: RecipeInput): ID => {
@@ -88,7 +92,16 @@ export function PantryProvider({ children }: { children: ReactNode }) {
             .join(', ')}`,
         }
       }
-      setData((d) => ({ ...d, groceryItems: d.groceryItems.filter((i) => i.id !== id) }))
+      // Cascade: also drop the item from the excluded (allergy) list so settings keep
+      // no dangling refs — mirrors deleteRecipe's plan cascade.
+      setData((d) => ({
+        ...d,
+        groceryItems: d.groceryItems.filter((i) => i.id !== id),
+        settings: {
+          ...d.settings,
+          excludedItemIds: d.settings.excludedItemIds.filter((x) => x !== id),
+        },
+      }))
       return { ok: true }
     },
     [data.recipes],
@@ -190,6 +203,21 @@ export function PantryProvider({ children }: { children: ReactNode }) {
     setData((d) => ({ ...d, shopping: { ...d.shopping, have: {} } }))
   }, [])
 
+  // --- Settings (allergy / excluded grocery items) ---
+  const toggleExcludedItem = useCallback((itemId: ID) => {
+    setData((d) => {
+      const excluded = d.settings.excludedItemIds
+      const next = excluded.includes(itemId)
+        ? excluded.filter((id) => id !== itemId)
+        : [...excluded, itemId]
+      return { ...d, settings: { ...d.settings, excludedItemIds: next } }
+    })
+  }, [])
+
+  const clearExcludedItems = useCallback(() => {
+    setData((d) => ({ ...d, settings: { ...d.settings, excludedItemIds: [] } }))
+  }, [])
+
   const value: PantryContextValue = useMemo(
     () => ({
       data,
@@ -197,6 +225,7 @@ export function PantryProvider({ children }: { children: ReactNode }) {
       getItem,
       getAisle,
       sortedAisles,
+      excludedItemIds,
       createRecipe,
       updateRecipe,
       deleteRecipe,
@@ -214,6 +243,8 @@ export function PantryProvider({ children }: { children: ReactNode }) {
       clearPlan,
       setHave,
       clearHave,
+      toggleExcludedItem,
+      clearExcludedItems,
     }),
     [
       data,
@@ -221,6 +252,7 @@ export function PantryProvider({ children }: { children: ReactNode }) {
       getItem,
       getAisle,
       sortedAisles,
+      excludedItemIds,
       createRecipe,
       updateRecipe,
       deleteRecipe,
@@ -238,6 +270,8 @@ export function PantryProvider({ children }: { children: ReactNode }) {
       clearPlan,
       setHave,
       clearHave,
+      toggleExcludedItem,
+      clearExcludedItems,
     ],
   )
 

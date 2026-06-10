@@ -1,12 +1,14 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { usePantry } from '../state/usePantry'
 import { formatIngredient } from '../lib/format'
+import { recipeHasExcludedItem } from '../lib/suggest'
+import { AllergyBadge } from './AllergyBadge'
 import { btnDanger, btnPrimary, btnSecondary, card, tagBadge } from './ui'
 
 export function RecipeDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { getRecipe, getItem, deleteRecipe } = usePantry()
+  const { getRecipe, getItem, excludedItemIds, deleteRecipe } = usePantry()
 
   const recipe = id ? getRecipe(id) : undefined
 
@@ -37,9 +39,10 @@ export function RecipeDetail() {
 
       <div className="mt-2 mb-4 flex items-start justify-between gap-4">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+          <h1 className="flex flex-wrap items-center gap-2 text-2xl font-bold text-gray-900">
             {recipe.favourite && <span title="Favourite">⭐</span>}
             {recipe.name}
+            {recipeHasExcludedItem(recipe, excludedItemIds) && <AllergyBadge />}
           </h1>
           {recipe.description && <p className="mt-1 text-gray-600">{recipe.description}</p>}
         </div>

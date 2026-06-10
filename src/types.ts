@@ -62,11 +62,21 @@ export interface ShoppingState {
   have: Record<string, number>
 }
 
+/**
+ * User settings. `excludedItemIds` are grocery items flagged as allergens / to
+ * avoid: recipes using any of them are badged across the library and kept out of
+ * the randomiser and suggestions.
+ */
+export interface Settings {
+  excludedItemIds: ID[]
+}
+
 export interface PantryData {
-  version: 3
+  version: 4
   aisles: Aisle[]
   groceryItems: GroceryItem[]
   recipes: Recipe[]
   plan: WeeklyPlan
   shopping: ShoppingState
+  settings: Settings
 }

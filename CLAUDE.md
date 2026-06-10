@@ -6,13 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The Pantry is a **personal, local-first** meal-planning app (single author, no accounts).
 The end goal is that the **weekly shopping list builds itself**: pick meals, get an
-aisle-grouped, scaled, unit-summed list. **Phases 1–4 are done**: the recipe library +
+aisle-grouped, scaled, unit-summed list. **Phases 1–5 are done**: the recipe library +
 grocery catalogue (Phase 1), recipe search/tag filtering + paste-import (Phase 2), the
-manual weekly planner with per-meal serving overrides (Phase 3), and the **shopping list**
+manual weekly planner with per-meal serving overrides (Phase 3), the **shopping list**
 that derives an aisle-grouped, scaled, unit-summed checklist from the plan with ad-hoc
-items, "already have", and tick-off (Phase 4). The randomiser/suggestions/allergies and
-nutrition are later phases. See `docs/PROJECT_PLAN.md` for the full roadmap before starting
-a new phase.
+items, "already have", and tick-off (Phase 4), and the **randomiser + suggestions +
+allergy settings** (Phase 5). Nutrition (Phase 6) is the remaining phase. See
+`docs/PROJECT_PLAN.md` for the full roadmap before starting a new phase.
 
 ## Commands
 
@@ -43,7 +43,9 @@ groceryItems, recipes, plan }`. The three catalogue entities form a strict depen
 This chain drives **referential-integrity guards on delete**: `deleteItem` refuses if any
 recipe uses the item; `deleteAisle` refuses if any grocery item is in the aisle. Both
 return a `DeleteResult` (`{ ok: true } | { ok: false; reason }`) instead of throwing —
-callers surface `reason` to the user. Preserve this pattern for any new cross-entity delete.
+callers surface `reason` to the user. A successful `deleteItem` also **cascades** the id out
+of `settings.excludedItemIds` (the allergy list never holds a dangling item). Preserve this
+pattern for any new cross-entity delete.
 
 **The weekly plan** is `PantryData.plan` (`WeeklyPlan = { meals: PlannedMeal[] }`). A
 `PlannedMeal` references a recipe by `recipeId`, with an optional `day` (undefined =
@@ -68,6 +70,29 @@ only — never the whole catalogue). Each row has −/+ steppers plus a ✓ that
 it back. Context mutations: `setHave(lineKey, qty)` (0 deletes the key) and `clearHave()`
 (the "Reset already have" button). (A "Want extra" section is parked.)
 
+**Randomiser, suggestions & allergies are pure logic in `src/lib/suggest.ts`.** A recipe is
+**flagged** (`recipeHasExcludedItem`) when any ingredient's `itemId` is in
+`PantryData.settings.excludedItemIds` (the only stored Phase-5 state — grocery items to
+avoid, managed on the **Settings page** via `toggleExcludedItem` / `clearExcludedItems`).
+The context exposes the derived **`excludedItemIds: Set<ID>`** (like `sortedAisles`) —
+consume that rather than re-deriving a Set from `data.settings`. Flagged recipes show a red
+**`<AllergyBadge>`** in the library list and detail, and are **hard-excluded** from the
+suggestion strip and suggestions (one private `candidateRecipes` predicate in `suggest.ts`
+defines "suggestible") — but still appear, badged, in the manual `AddRecipeModal` list. The
+planner's randomiser is a **`<SuggestionStrip>`** at the top of the page: three random
+allergy-safe recipes not in the plan (`pickRandomSuggestions`, uniformly random —
+favourites get no priority — with `avoidIds` so **Shuffle** visibly re-rolls). Strip state
+is **ephemeral** — `WeeklyPlanner` holds the IDs in component state (nothing persisted) and
+heals them via the pure `refillSuggestions` (drops suggestions that get
+planned/deleted/flagged, tops back up, and returns the input array unchanged so the state
+setter can bail out). Planning is **drag-and-drop** (native HTML5, helpers in
+`src/lib/dnd.ts` — one JSON payload under a custom MIME type): drag a suggestion onto a
+`DayRow` to `addMeal` (its slot refills), drag a `MealCard` between days (or the Unassigned
+row) to `setMealDay`. **Suggestions** (`suggestedRecipes`, shown in `AddRecipeModal`) are
+allergy-safe recipes **not already in the plan** (recency is plan-as-proxy — there is no
+cook history), favourites first. `filterRecipes` stays allergy-agnostic; allergy logic
+lives only in `suggest.ts`.
+
 **State flows through one React context.** `PantryProvider` (`src/state/PantryProvider.tsx`)
 holds the entire `PantryData` in one `useState` and exposes all reads/mutations via
 `PantryContextValue` (`src/state/context.ts`). Components consume it with the `usePantry()`
@@ -78,9 +103,10 @@ recipe edits.
 **Persistence is isolated to `src/lib/storage.ts`** (localStorage key `pantry:data`).
 `PantryProvider` auto-saves the whole blob on every change via an effect (skipping the
 initial load). On first run or on a parse failure, `buildSeedData()` (`src/lib/seed.ts`)
-seeds starter aisles + grocery items. `PantryData.version` is currently `3`; on load,
+seeds starter aisles + grocery items. `PantryData.version` is currently `4`; on load,
 `migrate()` upgrades older blobs one step at a time via `step()` (v1→v2 backfilled the empty
-`plan`, v2→v3 the empty `shopping` list) so an old blob chains all the way up; an unknown
+`plan`, v2→v3 the empty `shopping` list, v3→v4 the empty `settings`) so an old blob chains
+all the way up; an unknown
 version throws → re-seed. When the shape changes, **bump `CURRENT_VERSION` and add a new
 `case` to `step()`** that backfills the new fields. This file is the intended swap point
 for a real backend later, so keep persistence out of components.
