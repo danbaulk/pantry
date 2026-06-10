@@ -29,7 +29,7 @@ export function load(): PantryData {
   }
 }
 
-const CURRENT_VERSION = 3
+const CURRENT_VERSION = 4
 
 type AnyBlob = { version?: number } & Record<string, unknown>
 
@@ -50,10 +50,13 @@ function migrate(parsed: AnyBlob): PantryData {
   const data = blob as unknown as PantryData
   const s = data.shopping as Partial<PantryData['shopping']> | undefined
   const validShopping = !!s && typeof s.have === 'object' && s.have !== null && !Array.isArray(s.have)
+  const settings = data.settings as Partial<PantryData['settings']> | undefined
+  const validSettings = !!settings && Array.isArray(settings.excludedItemIds)
   return {
     ...data,
     plan: data.plan && Array.isArray(data.plan.meals) ? data.plan : { meals: [] },
     shopping: validShopping ? { have: data.shopping.have } : { have: {} },
+    settings: validSettings ? { excludedItemIds: settings.excludedItemIds! } : { excludedItemIds: [] },
   }
 }
 
@@ -65,6 +68,9 @@ function step(blob: AnyBlob): AnyBlob {
     case 2:
       // v3 introduced the shopping list (Phase 4).
       return { ...blob, version: 3, shopping: { have: {} } }
+    case 3:
+      // v4 introduced allergy/excluded-item settings (Phase 5).
+      return { ...blob, version: 4, settings: { excludedItemIds: [] } }
     default:
       throw new Error(`Unsupported pantry data version: ${blob.version}`)
   }

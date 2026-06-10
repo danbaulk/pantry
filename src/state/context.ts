@@ -15,6 +15,8 @@ export interface PantryContextValue {
   getAisle: (id: ID) => Aisle | undefined
   /** Aisles sorted by walk-order. */
   sortedAisles: Aisle[]
+  /** `settings.excludedItemIds` as a Set — pass to the `suggest.ts` allergy helpers. */
+  excludedItemIds: Set<ID>
 
   // Recipes
   createRecipe: (input: RecipeInput) => ID
@@ -42,6 +44,10 @@ export interface PantryContextValue {
   // Shopping list (derived from the plan; user records what they already have)
   setHave: (lineKey: string, quantity: number) => void
   clearHave: () => void
+
+  // Settings (allergy / excluded grocery items)
+  toggleExcludedItem: (itemId: ID) => void
+  clearExcludedItems: () => void
 }
 
 export const PantryContext = createContext<PantryContextValue | null>(null)

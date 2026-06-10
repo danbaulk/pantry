@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom'
 import type { PlannedMeal } from '../types'
 import { usePantry } from '../state/usePantry'
-import { btnDanger, stepBtn } from './ui'
+import { setDragPayload } from '../lib/dnd'
+import { btnDanger, dragTile, stepBtn } from './ui'
 
-/** A planned meal in the week grid: recipe link, remove, and a servings stepper. */
+/** A planned meal in the week grid: recipe link, remove, and a servings stepper. Draggable onto another day. */
 export function MealCard({ meal }: { meal: PlannedMeal }) {
   const { getRecipe, setMealServings, removeMeal } = usePantry()
   const recipe = getRecipe(meal.recipeId)
@@ -13,17 +14,22 @@ export function MealCard({ meal }: { meal: PlannedMeal }) {
   const serves = meal.servings ?? recipe.servings
 
   return (
-    <li className="flex w-56 flex-col gap-2 rounded-md border border-gray-200 p-2">
+    <li
+      draggable
+      onDragStart={(e) => setDragPayload(e, { type: 'meal', id: meal.id })}
+      className={`${dragTile} flex flex-col gap-2 border-gray-200`}
+    >
       <div className="flex items-start justify-between gap-2">
         <Link
           to={`/recipes/${recipe.id}`}
+          draggable={false}
           className="text-sm font-medium text-green-700 hover:underline"
         >
           {recipe.name}
         </Link>
         <button
           type="button"
-          className={`${btnDanger} px-2 py-0.5`}
+          className={`${btnDanger} shrink-0 px-2 py-0.5`}
           onClick={() => removeMeal(meal.id)}
         >
           Remove

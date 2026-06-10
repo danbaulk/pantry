@@ -1,6 +1,6 @@
 # The Pantry — Plan
 
-_Last updated: 2026-06-08 · Status: Phases 1–4 shipped_
+_Last updated: 2026-06-08 · Status: Phases 1–5 shipped_
 
 ## What this is
 
@@ -40,7 +40,7 @@ no sharing, local data only to start.
   known aisle and unit that the shopping list can rely on.
 - **Allergy-aware** (later): recipes containing excluded items are flagged and kept out of
   suggestions and the randomiser.
-- **Randomiser** (later): auto-fill a week from favourites, then re-roll or swap any meal.
+- **Randomiser** (later): shuffleable random suggestions, dragged onto days to fill the week.
 - **Suggestions** (later): surface favourites/recipes not cooked recently.
 
 ## Feature groups
@@ -113,13 +113,16 @@ and check-off / "already have" work.
 ### Phase 5 — Randomiser, Suggestions & Allergies
 **Goal:** Help the week fill itself and respect dietary limits.
 **Includes:**
-- **Randomise** a week from favourites; **re-roll** or **swap** any single meal.
-- **Suggestions**: surface favourites / recipes not cooked recently.
+- A **suggestion strip** at the top of the planner: three completely random recipes, with
+  a **Shuffle** to re-roll them.
+- **Drag and drop**: drag a suggestion onto a day to plan it; drag planned meals between
+  days to rearrange the week.
 - **Allergy settings** (excluded items) + **allergy-aware** flagging and filtering of
-  recipes out of suggestions and the randomiser.
+  recipes out of suggestions.
 **Explicitly not yet:** —
-**How we'll run & test it locally:** mark some favourites, randomise a week, re-roll a
-meal, add an allergy and confirm matching recipes are flagged and excluded.
+**How we'll run & test it locally:** mark some favourites, shuffle the suggestions, drag
+one onto a day, drag a meal to another day, add an allergy and confirm matching recipes
+are flagged and excluded.
 
 ### Phase 6 — Nutrition
 **Goal:** See the macros of what you've planned.
@@ -181,6 +184,27 @@ basket rather than just a personal tool.
 
 ## Decisions log
 
+- **2026-06-10** — Phase 5 planner UX redesigned (before merge): the per-meal 🎲 swap and
+  the "Randomise empty days" button are **replaced by a suggestion strip** at the top of
+  the planner — three random allergy-safe recipes not in the plan (uniformly random; a
+  favourites-first bias was tried and dropped because small libraries pinned favourites in
+  the strip) with a **Shuffle** button — plus **native HTML5 drag-and-drop** (no library,
+  desktop/mouse
+  only): drag a suggestion onto a day to plan it (its slot refills), drag meal cards
+  between days (and the Unassigned bucket) to rearrange. Strip state is ephemeral
+  component state, nothing persisted. `fillWeekMeals`/`pickSwapRecipe` and the
+  `addMeals`/`setMealRecipe` context mutations were removed with the old design.
+- **2026-06-08** — Phase 5 randomiser/suggestions/allergies: **allergy state is a single
+  `PantryData.settings.excludedItemIds`** (grocery items to avoid), managed on a new
+  **Settings page**. A recipe is **flagged** when it uses any excluded item; flagged recipes
+  get a red badge in the library + detail and are **hard-excluded** from the randomiser and
+  suggestions (but still selectable, badged, in the manual add modal). The **randomiser fills
+  empty days only** (never disturbs manual picks), drawing **allergy-safe favourites first,
+  then other recipes**; each meal has a 🎲 **swap**. **Suggestions** = allergy-safe recipes
+  **not already in the plan** — "not recently cooked" is **plan-as-proxy** since the app keeps
+  no cook history. Randomiser/suggestion logic is pure in `src/lib/suggest.ts`; `filterRecipes`
+  stays allergy-agnostic. Data `version` bumped to **4** with a v3→v4 migration backfilling
+  empty `settings`.
 - **2026-06-08** — Phase 4 shopping list: **fully-derived buy list + an "Already have"
   reconciliation column** (`PantryData.shopping = { have, checked }`). The list is always
   computed from the plan — `buildShoppingList` scales each meal by `(servings ??

@@ -7,6 +7,7 @@ import { CatalogueManager } from './components/CatalogueManager'
 import { AisleManager } from './components/AisleManager'
 import { WeeklyPlanner } from './components/WeeklyPlanner'
 import { ShoppingList } from './components/ShoppingList'
+import { Settings } from './components/Settings'
 
 const navLink = ({ isActive }: { isActive: boolean }) =>
   `rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
@@ -37,6 +38,9 @@ export default function App() {
             <NavLink to="/aisles" className={navLink}>
               Aisles
             </NavLink>
+            <NavLink to="/settings" className={navLink}>
+              Settings
+            </NavLink>
           </nav>
         </div>
       </header>
@@ -53,6 +57,7 @@ export default function App() {
           <Route path="/shopping" element={<ShoppingList />} />
           <Route path="/catalogue" element={<CatalogueManager />} />
           <Route path="/aisles" element={<AisleManager />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/planner" replace />} />
         </Routes>
       </main>

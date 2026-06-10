@@ -8,7 +8,7 @@ import { GroceryItemEditRow } from './GroceryItemEditRow'
 import { ErrorMessage } from './ErrorMessage'
 import { UnitSelect } from './UnitSelect'
 import { AisleSelect } from './AisleSelect'
-import { btnDanger, btnPrimary, btnSecondary, card, input, label } from './ui'
+import { aisleHeading, btnDanger, btnPrimary, btnSecondary, card, input, label } from './ui'
 
 export function CatalogueManager() {
   const { data, sortedAisles, createItem, updateItem, deleteItem } = usePantry()
@@ -85,7 +85,7 @@ export function CatalogueManager() {
       <div className="space-y-6">
         {itemsByAisle.map(({ aisle, items }) => (
           <section key={aisle.id}>
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-500">
+            <h2 className={`mb-2 ${aisleHeading}`}>
               {aisle.name}
             </h2>
             <ul className="space-y-2">
