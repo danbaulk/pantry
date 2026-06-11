@@ -29,9 +29,6 @@ export const tagBadge = `${badge} bg-gray-100 text-gray-600`
 /** Red warning badge (recipes containing an excluded/allergen item). */
 export const allergenBadge = `${badge} bg-red-100 font-medium text-red-700`
 
-/** Section heading for an aisle group (catalogue, settings). */
-export const aisleHeading = 'text-sm font-semibold uppercase tracking-wide text-gray-500'
-
 /** Fixed-width draggable planner tile (planned meals, suggestions) — add colours per use. */
 export const dragTile = 'w-56 cursor-grab rounded-md border p-2 active:cursor-grabbing'
 

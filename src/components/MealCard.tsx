@@ -2,11 +2,13 @@ import { Link } from 'react-router-dom'
 import type { PlannedMeal } from '../types'
 import { usePantry } from '../state/usePantry'
 import { setDragPayload } from '../lib/dnd'
+import { recipeHasExcludedItem } from '../lib/suggest'
+import { AllergyBadge } from './AllergyBadge'
 import { btnDanger, dragTile, stepBtn } from './ui'
 
 /** A planned meal in the week grid: recipe link, remove, and a servings stepper. Draggable onto another day. */
 export function MealCard({ meal }: { meal: PlannedMeal }) {
-  const { getRecipe, setMealServings, removeMeal } = usePantry()
+  const { getRecipe, excludedItemIds, setMealServings, removeMeal } = usePantry()
   const recipe = getRecipe(meal.recipeId)
   if (!recipe) return null
 
@@ -30,9 +32,11 @@ export function MealCard({ meal }: { meal: PlannedMeal }) {
         <button
           type="button"
           className={`${btnDanger} shrink-0 px-2 py-0.5`}
+          aria-label="Remove from plan"
+          title="Remove from plan"
           onClick={() => removeMeal(meal.id)}
         >
-          Remove
+          🗑
         </button>
       </div>
 
@@ -58,6 +62,11 @@ export function MealCard({ meal }: { meal: PlannedMeal }) {
             +
           </button>
         </div>
+        {recipeHasExcludedItem(recipe, excludedItemIds) && (
+          <span className="ml-auto whitespace-nowrap">
+            <AllergyBadge />
+          </span>
+        )}
       </div>
     </li>
   )

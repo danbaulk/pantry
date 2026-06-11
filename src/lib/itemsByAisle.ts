@@ -7,8 +7,8 @@ export interface ItemsByAisle {
 
 /**
  * Group grocery items under their aisle, each group sorted by name and empty
- * aisles dropped. Pass `sortedAisles` so groups follow store walk-order. Shared
- * by the ingredient pickers and the catalogue view.
+ * aisles dropped. Pass `sortedAisles` so groups follow store walk-order. Used
+ * by the ingredient pickers.
  */
 export function buildItemsByAisle(
   sortedAisles: Aisle[],

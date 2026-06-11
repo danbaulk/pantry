@@ -7,14 +7,14 @@ import { getDragPayload, hasDragPayload, type DragPayload } from '../lib/dnd'
 import { MealCard } from './MealCard'
 import { AddRecipeModal } from './AddRecipeModal'
 import { SuggestionStrip } from './SuggestionStrip'
-import { btnSecondary, card } from './ui'
+import { card } from './ui'
 
 const fmtDate = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 
 const SUGGESTION_COUNT = 3
 
 export function WeeklyPlanner() {
-  const { data, getRecipe, excludedItemIds, addMeal, setMealDay, clearPlan } = usePantry()
+  const { data, getRecipe, excludedItemIds, addMeal, setMealDay } = usePantry()
   const meals = data.plan.meals
   const [addingDay, setAddingDay] = useState<DayOfWeek | null>(null)
 
@@ -58,28 +58,16 @@ export function WeeklyPlanner() {
   }
 
   // A drop on a day: a suggestion becomes a planned meal (the healing effect then refills
-  // its slot), an existing meal moves to that day.
+  // its slot), an existing meal moves to that day. Aisle payloads belong to the Aisles
+  // page — a cross-page drag can't happen, but never let one fall through to setMealDay.
   function handleDrop(payload: DragPayload, day?: DayOfWeek) {
     if (payload.type === 'recipe') addMeal(payload.id, day)
-    else setMealDay(payload.id, day)
+    else if (payload.type === 'meal') setMealDay(payload.id, day)
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">This week</h1>
-        {meals.length > 0 && (
-          <button
-            type="button"
-            className={btnSecondary}
-            onClick={() => {
-              if (confirm('Clear all meals from this week?')) clearPlan()
-            }}
-          >
-            Clear week
-          </button>
-        )}
-      </div>
+      <h1 className="text-xl font-bold">This week</h1>
 
       <SuggestionStrip suggestions={suggestions} onShuffle={handleShuffle} />
 

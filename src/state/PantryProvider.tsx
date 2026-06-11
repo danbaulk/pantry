@@ -136,17 +136,22 @@ export function PantryProvider({ children }: { children: ReactNode }) {
     [data.groceryItems],
   )
 
-  const moveAisle = useCallback((id: ID, direction: 'up' | 'down') => {
+  const moveAisle = useCallback((id: ID, toIndex: number) => {
     setData((d) => {
       const sorted = [...d.aisles].sort((a, b) => a.order - b.order)
-      const idx = sorted.findIndex((a) => a.id === id)
-      if (idx === -1) return d
-      const swapWith = direction === 'up' ? idx - 1 : idx + 1
-      if (swapWith < 0 || swapWith >= sorted.length) return d
-      ;[sorted[idx], sorted[swapWith]] = [sorted[swapWith], sorted[idx]]
+      const fromIdx = sorted.findIndex((a) => a.id === id)
+      if (fromIdx === -1) return d
+      // `toIndex` is pre-removal ("insert before the row currently there"); taking the
+      // dragged aisle out first shifts later targets left by one. Clamp stray indices.
+      const insertAt = Math.max(
+        0,
+        Math.min(fromIdx < toIndex ? toIndex - 1 : toIndex, sorted.length - 1),
+      )
+      if (insertAt === fromIdx) return d
+      const [moved] = sorted.splice(fromIdx, 1)
+      sorted.splice(insertAt, 0, moved)
       // Reassign contiguous order values to reflect new sequence.
-      const reordered = sorted.map((a, i) => ({ ...a, order: i }))
-      return { ...d, aisles: reordered }
+      return { ...d, aisles: sorted.map((a, i) => ({ ...a, order: i })) }
     })
   }, [])
 
@@ -183,10 +188,6 @@ export function PantryProvider({ children }: { children: ReactNode }) {
     }))
   }, [])
 
-  const clearPlan = useCallback(() => {
-    setData((d) => ({ ...d, plan: { ...d.plan, meals: [] } }))
-  }, [])
-
   // --- Shopping list (derived from the plan; reconciled via "already have") ---
   // Record how much of a requirement line (`itemId::unit`) the user already has.
   // A quantity of 0 (or less) drops the key so the blob stays tidy.
@@ -214,10 +215,6 @@ export function PantryProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
-  const clearExcludedItems = useCallback(() => {
-    setData((d) => ({ ...d, settings: { ...d.settings, excludedItemIds: [] } }))
-  }, [])
-
   const value: PantryContextValue = useMemo(
     () => ({
       data,
@@ -240,11 +237,9 @@ export function PantryProvider({ children }: { children: ReactNode }) {
       removeMeal,
       setMealDay,
       setMealServings,
-      clearPlan,
       setHave,
       clearHave,
       toggleExcludedItem,
-      clearExcludedItems,
     }),
     [
       data,
@@ -267,11 +262,9 @@ export function PantryProvider({ children }: { children: ReactNode }) {
       removeMeal,
       setMealDay,
       setMealServings,
-      clearPlan,
       setHave,
       clearHave,
       toggleExcludedItem,
-      clearExcludedItems,
     ],
   )
 
