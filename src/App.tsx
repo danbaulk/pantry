@@ -3,11 +3,10 @@ import { RecipeList } from './components/RecipeList'
 import { RecipeDetail } from './components/RecipeDetail'
 import { RecipeEditor } from './components/RecipeEditor'
 import { RecipeImport } from './components/RecipeImport'
-import { CatalogueManager } from './components/CatalogueManager'
-import { AisleManager } from './components/AisleManager'
+import { Supermarket } from './components/Supermarket'
+import { AisleDetail } from './components/AisleDetail'
 import { WeeklyPlanner } from './components/WeeklyPlanner'
 import { ShoppingList } from './components/ShoppingList'
-import { Settings } from './components/Settings'
 
 const navLink = ({ isActive }: { isActive: boolean }) =>
   `rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
@@ -32,14 +31,8 @@ export default function App() {
             <NavLink to="/recipes" className={navLink}>
               Recipes
             </NavLink>
-            <NavLink to="/catalogue" className={navLink}>
-              Catalogue
-            </NavLink>
-            <NavLink to="/aisles" className={navLink}>
-              Aisles
-            </NavLink>
-            <NavLink to="/settings" className={navLink}>
-              Settings
+            <NavLink to="/supermarket" className={navLink}>
+              Supermarket
             </NavLink>
           </nav>
         </div>
@@ -55,9 +48,11 @@ export default function App() {
           <Route path="/recipes/:id/edit" element={<RecipeEditor />} />
           <Route path="/planner" element={<WeeklyPlanner />} />
           <Route path="/shopping" element={<ShoppingList />} />
-          <Route path="/catalogue" element={<CatalogueManager />} />
-          <Route path="/aisles" element={<AisleManager />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/supermarket" element={<Supermarket />} />
+          <Route path="/supermarket/:aisleId" element={<AisleDetail />} />
+          {/* The old split pages, now merged — keep stale bookmarks working. */}
+          <Route path="/catalogue" element={<Navigate to="/supermarket" replace />} />
+          <Route path="/aisles" element={<Navigate to="/supermarket" replace />} />
           <Route path="*" element={<Navigate to="/planner" replace />} />
         </Routes>
       </main>

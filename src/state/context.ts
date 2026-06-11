@@ -32,14 +32,18 @@ export interface PantryContextValue {
   createAisle: (name: string) => Aisle
   renameAisle: (id: ID, name: string) => void
   deleteAisle: (id: ID) => DeleteResult
-  moveAisle: (id: ID, direction: 'up' | 'down') => void
+  /**
+   * Move an aisle so it sits before the aisle currently at `toIndex` in walk-order
+   * (pass `sortedAisles.length` to move it to the end). No-op when the position
+   * wouldn't change.
+   */
+  moveAisle: (id: ID, toIndex: number) => void
 
   // Weekly plan
   addMeal: (recipeId: ID, day?: DayOfWeek) => void
   removeMeal: (mealId: ID) => void
   setMealDay: (mealId: ID, day?: DayOfWeek) => void
   setMealServings: (mealId: ID, servings?: number) => void
-  clearPlan: () => void
 
   // Shopping list (derived from the plan; user records what they already have)
   setHave: (lineKey: string, quantity: number) => void
@@ -47,7 +51,6 @@ export interface PantryContextValue {
 
   // Settings (allergy / excluded grocery items)
   toggleExcludedItem: (itemId: ID) => void
-  clearExcludedItems: () => void
 }
 
 export const PantryContext = createContext<PantryContextValue | null>(null)

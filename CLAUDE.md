@@ -6,13 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The Pantry is a **personal, local-first** meal-planning app (single author, no accounts).
 The end goal is that the **weekly shopping list builds itself**: pick meals, get an
-aisle-grouped, scaled, unit-summed list. **Phases 1–5 are done**: the recipe library +
+aisle-grouped, scaled, unit-summed list. **All six phases are done**: the recipe library +
 grocery catalogue (Phase 1), recipe search/tag filtering + paste-import (Phase 2), the
 manual weekly planner with per-meal serving overrides (Phase 3), the **shopping list**
 that derives an aisle-grouped, scaled, unit-summed checklist from the plan with ad-hoc
-items, "already have", and tick-off (Phase 4), and the **randomiser + suggestions +
-allergy settings** (Phase 5). Nutrition (Phase 6) is the remaining phase. See
-`docs/PROJECT_PLAN.md` for the full roadmap before starting a new phase.
+items, "already have", and tick-off (Phase 4), the **randomiser + suggestions + allergy
+settings** (Phase 5), and a round of **UX refinements** (Phase 6: the catalogue + aisle
+pages merged into one **Supermarket** section, allergen "Avoid" toggles on its aisle
+pages, drag-and-drop aisle reordering, planner polish). A nutrition-tracking Phase 6 was
+built, trialled, and **rejected** — see the decisions log. See `docs/PROJECT_PLAN.md`
+for the full roadmap and decisions log before starting new work.
 
 ## Commands
 
@@ -50,8 +53,8 @@ pattern for any new cross-entity delete.
 **The weekly plan** is `PantryData.plan` (`WeeklyPlan = { meals: PlannedMeal[] }`). A
 `PlannedMeal` references a recipe by `recipeId`, with an optional `day` (undefined =
 unassigned bucket) and an optional `servings` override (undefined = recipe default).
-Mutations live on the context: `addMeal`, `removeMeal`, `setMealDay`, `setMealServings`,
-`clearPlan`. `deleteRecipe` **cascades** — it drops any planned meals for that recipe so the
+Mutations live on the context: `addMeal`, `removeMeal`, `setMealDay`, `setMealServings`.
+`deleteRecipe` **cascades** — it drops any planned meals for that recipe so the
 plan never holds a dangling `recipeId`; the planner also defensively skips meals whose recipe
 no longer resolves. There is no integrity guard blocking recipe deletion (unlike items/aisles).
 
@@ -73,10 +76,12 @@ it back. Context mutations: `setHave(lineKey, qty)` (0 deletes the key) and `cle
 **Randomiser, suggestions & allergies are pure logic in `src/lib/suggest.ts`.** A recipe is
 **flagged** (`recipeHasExcludedItem`) when any ingredient's `itemId` is in
 `PantryData.settings.excludedItemIds` (the only stored Phase-5 state — grocery items to
-avoid, managed on the **Settings page** via `toggleExcludedItem` / `clearExcludedItems`).
+avoid, managed per-item via the "Avoid" toggle on the **supermarket's aisle pages** /
+`toggleExcludedItem`; there is no Settings page).
 The context exposes the derived **`excludedItemIds: Set<ID>`** (like `sortedAisles`) —
 consume that rather than re-deriving a Set from `data.settings`. Flagged recipes show a red
-**`<AllergyBadge>`** in the library list and detail, and are **hard-excluded** from the
+**`<AllergyBadge>`** in the library list, detail, and on their planner meal tiles, and are
+**hard-excluded** from the
 suggestion strip and suggestions (one private `candidateRecipes` predicate in `suggest.ts`
 defines "suggestible") — but still appear, badged, in the manual `AddRecipeModal` list. The
 planner's randomiser is a **`<SuggestionStrip>`** at the top of the page: three random
@@ -86,9 +91,11 @@ is **ephemeral** — `WeeklyPlanner` holds the IDs in component state (nothing p
 heals them via the pure `refillSuggestions` (drops suggestions that get
 planned/deleted/flagged, tops back up, and returns the input array unchanged so the state
 setter can bail out). Planning is **drag-and-drop** (native HTML5, helpers in
-`src/lib/dnd.ts` — one JSON payload under a custom MIME type): drag a suggestion onto a
+`src/lib/dnd.ts` — one JSON payload under a custom MIME type, a three-way
+`recipe | meal | aisle` union also used for aisle reordering): drag a suggestion onto a
 `DayRow` to `addMeal` (its slot refills), drag a `MealCard` between days (or the Unassigned
-row) to `setMealDay`. **Suggestions** (`suggestedRecipes`, shown in `AddRecipeModal`) are
+row) to `setMealDay`. Drop handlers check the payload `type` explicitly so a grown union
+can't misroute. **Suggestions** (`suggestedRecipes`, shown in `AddRecipeModal`) are
 allergy-safe recipes **not already in the plan** (recency is plan-as-proxy — there is no
 cook history), favourites first. `filterRecipes` stays allergy-agnostic; allergy logic
 lives only in `suggest.ts`.
@@ -111,8 +118,20 @@ version throws → re-seed. When the shape changes, **bump `CURRENT_VERSION` and
 `case` to `step()`** that backfills the new fields. This file is the intended swap point
 for a real backend later, so keep persistence out of components.
 
+**The supermarket section owns aisles and the grocery catalogue.** `Supermarket`
+(`/supermarket`) lists every aisle in walk-order; each row **clicks through** to
+`AisleDetail` (`/supermarket/:aisleId`) where the aisle is renamed/deleted (delete still
+guarded) and its items are added (aisle implied by the page), edited (the edit row keeps
+an aisle select, so saving can move an item to another aisle — it leaves the page),
+avoided, or deleted. `/catalogue` and `/aisles` redirect to `/supermarket`.
+
 **Aisle ordering:** aisles carry an `order` field (store walk-order). Use `sortedAisles`
-from context for display; `moveAisle` reassigns contiguous `order` values on each swap.
+from context for display. Reordering is **drag-and-drop on the Supermarket page** (an
+`{ type: 'aisle' }` payload via `src/lib/dnd.ts`; rows drag by a ⠿ handle so the
+click-through link doesn't start drags; insert-before-row semantics plus a dashed end
+drop-zone shown mid-drag). `moveAisle(id, toIndex)` splices the aisle in front of the row
+currently at `toIndex` (pass `sortedAisles.length` for the end) and reassigns contiguous
+`order` values; self/adjacent drops no-op.
 
 ## Conventions
 

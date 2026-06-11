@@ -1,6 +1,6 @@
 # The Pantry — Plan
 
-_Last updated: 2026-06-08 · Status: Phases 1–5 shipped_
+_Last updated: 2026-06-11 · Status: Phases 1–6 shipped_
 
 ## What this is
 
@@ -18,13 +18,13 @@ no sharing, local data only to start.
   Each belongs to an **aisle/section** and has a default **unit/size** (g, ml, can, pack,
   each…) so quantities are always meaningful.
 - **Recipes** — name, description, instructions, servings, tags, favourite flag, optional
-  notes/source, a list of **ingredients** (each a quantity + unit of a grocery item), and
-  **nutrition per serving** (calories, protein, other macros).
+  notes/source, and a list of **ingredients** (each a quantity + unit of a grocery item).
 - **Weekly plan** — meals chosen for a week, optionally assigned to days, with the option
   to cook a different number of servings than the recipe default.
 - **Shopping list** — generated from a week's plan; combined, scaled, aisle-grouped;
   supports check-off and ad-hoc items.
-- **Settings** — household size and any allergies / items to exclude.
+- **Settings** — grocery items to avoid (allergies), configured per-item on the
+  supermarket's aisle pages (no dedicated settings page; no household-size setting).
 
 ## Key behaviours
 
@@ -47,14 +47,15 @@ no sharing, local data only to start.
 
 - **Recipe library** — recipe CRUD, ingredients, tags, favourites; later: search, tag
   filtering, paste/import.
-- **Grocery catalogue** — grocery items, units, and editable aisles; quick-add during
-  recipe authoring.
+- **Grocery catalogue** — grocery items, units, and editable aisles, all on one
+  **Supermarket** page (reorderable aisles that click through to their items); quick-add
+  during recipe authoring.
 - **Planning** — weekly plan, manual meal selection, day assignment, serving overrides.
 - **Shopping list** — generation, combination, scaling, aisle grouping, check-off, ad-hoc
   items, "already have".
 - **Discovery** — randomiser and not-recently-cooked suggestions.
-- **Allergies / settings** — household size, excluded items, allergy-aware filtering.
-- **Nutrition** — per-serving entry and roll-up across the plan.
+- **Allergies** — per-item "Avoid" flags on the supermarket's aisle pages; allergy-aware
+  flagging and filtering.
 
 ## Phases
 
@@ -124,17 +125,23 @@ and check-off / "already have" work.
 one onto a day, drag a meal to another day, add an allergy and confirm matching recipes
 are flagged and excluded.
 
-### Phase 6 — Nutrition
-**Goal:** See the macros of what you've planned.
+### Phase 6 — UX refinements
+**Goal:** Post-trial polish across the planner, catalogue, and aisles.
 **Includes:**
-- Record **nutrition per serving** on each recipe (calories, protein, other macros), by
-  hand.
-- Show those figures on the recipe detail.
-- **Roll up** across the weekly plan — per day and for the week — scaled to
-  servings/household size.
-**Explicitly not yet:** auto-filled nutrition from a food database (parked).
-**How we'll run & test it locally:** enter nutrition on a few recipes, plan a week, and
-confirm per-day and weekly totals scale correctly.
+- Planner: remove the "Clear week" button; the meal tile's "Remove" becomes a **bin
+  icon** (🗑); allergen recipes get the same red **allergen badge** on their planner
+  tiles as in the library.
+- The grocery catalogue and aisle pages merge into one **Supermarket** page:
+  drag-reorderable aisle rows (handle-only + a move-to-end drop zone, replacing the
+  up/down arrows) that **click through** to an aisle's items — rename/delete the aisle
+  and add/edit/avoid/delete its items there.
+- Allergen config moves **onto the supermarket's aisle pages** (a per-item "Avoid"
+  toggle); the separate Settings page is removed.
+**Explicitly not:** nutrition — built, trialled, rejected (see decisions log).
+**How we'll run & test it locally:** plan a week and bin a meal from its tile; open an
+aisle from the supermarket, mark an item "Avoid", and confirm its recipes get badged on
+the planner and drop out of suggestions; drag an aisle row to reorder and confirm the
+aisle list and shopping list follow.
 
 ## Local-first build ethos
 
@@ -158,7 +165,9 @@ build-time decision and is deliberately left open here; the only fixed choice is
   users*, building on the basic paste/import in Phase 2).
 - Import a recipe from a **URL** (scraping) — an upgrade on the Phase 2 paste/import.
 - **Unit conversion** in shopping-list aggregation.
-- **Auto-filled nutrition** via a per-ingredient food database, instead of hand entry.
+- **Nutrition tracking** — built and trialled as the original Phase 6 (per-serving
+  macros + planner roll-up), then rejected and reverted (2026-06-11); subsumes the
+  earlier auto-filled-nutrition-database idea.
 
 ## Happy path (how we'll know it works, end to end)
 
@@ -184,6 +193,30 @@ basket rather than just a personal tool.
 
 ## Decisions log
 
+- **2026-06-11** — Catalogue + Aisles merged into one **Supermarket** section (route
+  `/supermarket`; the old `/catalogue` and `/aisles` routes redirect there).
+  `Supermarket` lists the drag-reorderable aisle rows, each **clicking through** to
+  `AisleDetail` (`/supermarket/:aisleId`): aisle rename and (guarded) delete move into
+  that page, the add-item form is **scoped to the aisle** (no aisle picker — the page
+  implies it), and the item rows (unit, "Avoid" toggle, edit, delete) live there. The
+  item **edit row keeps its aisle select**, so editing is how an item moves between
+  aisles (it leaves the page on save). The `aisleHeading` ui string went with the old
+  grouped catalogue view. No data-shape change.
+- **2026-06-11** — Phase 6 repurposed: **nutrition tracking was built, trialled for
+  real, and rejected** ("not a fan") — fully reverted, moved to parked. Phase 6 is now
+  **ad-hoc UX refinements**: (1) the planner's "Clear week" button removed (`clearPlan`
+  mutation removed as orphaned, per the 2026-06-10 precedent); (2) the meal tile's
+  "Remove" is a 🗑 bin icon; (3) planner meal tiles show the red allergen badge like the
+  library; (4) allergen config moved from the Settings page to a per-item **"Avoid"
+  toggle on the grocery catalogue page** — the Settings page (and its "Clear all" /
+  `clearExcludedItems`) removed, `/settings` falls into the wildcard redirect;
+  `PantryData.settings` is **unchanged** (no version bump); (5) aisle reordering is
+  **drag-and-drop** — `DragPayload` gains `{ type: 'aisle' }`, rows drag by a ⠿ handle
+  only (the rename input keeps text selection), drop inserts before the target row, a
+  dashed end zone (shown mid-drag) moves a row last, and `moveAisle(id, 'up' | 'down')`
+  is re-signatured to **`moveAisle(id, toIndex)`** (splice + contiguous `order`
+  reassign; self/adjacent drops no-op). Keyboard reordering is dropped — consistent
+  with the planner dnd's desktop/mouse-only stance.
 - **2026-06-10** — Phase 5 planner UX redesigned (before merge): the per-meal 🎲 swap and
   the "Randomise empty days" button are **replaced by a suggestion strip** at the top of
   the planner — three random allergy-safe recipes not in the plan (uniformly random; a
