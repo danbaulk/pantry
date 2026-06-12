@@ -35,6 +35,7 @@ export function RecipeImport() {
       name: result.name,
       servings: result.servings,
       instructions: result.instructions.trim() || undefined,
+      source: result.source || undefined,
       tags: [],
       favourite: false,
       ingredients,

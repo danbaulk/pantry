@@ -127,6 +127,7 @@ export function IngredientEditor({ ingredients, onChange, hints: initialHints }:
             {quickAddRow === idx && (
               <GroceryItemQuickAdd
                 initialName={hints[idx]}
+                initialUnit={ing.unit || undefined}
                 onAdded={(item) => handleQuickAdded(idx, item)}
                 onCancel={() => setQuickAddRow(null)}
               />

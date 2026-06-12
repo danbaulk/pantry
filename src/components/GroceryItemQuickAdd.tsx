@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { GroceryItem } from '../types'
 import { usePantry } from '../state/usePantry'
-import { UNITS } from '../lib/units'
+import { isKnownUnit, UNITS } from '../lib/units'
 import { UnitSelect } from './UnitSelect'
 import { AisleSelect } from './AisleSelect'
 import { btnPrimary, btnSecondary, input, label } from './ui'
@@ -9,6 +9,8 @@ import { btnPrimary, btnSecondary, input, label } from './ui'
 interface Props {
   /** Pre-fill the name (e.g. what the user typed into the picker). */
   initialName?: string
+  /** Pre-fill the default unit (e.g. the ingredient row's parsed unit). */
+  initialUnit?: string
   onAdded: (item: GroceryItem) => void
   onCancel: () => void
 }
@@ -21,11 +23,13 @@ interface Props {
  * bubble its submit (and steal Enter) up to that outer form. Enter is handled
  * locally instead.
  */
-export function GroceryItemQuickAdd({ initialName = '', onAdded, onCancel }: Props) {
+export function GroceryItemQuickAdd({ initialName = '', initialUnit, onAdded, onCancel }: Props) {
   const { sortedAisles, createItem } = usePantry()
   const [name, setName] = useState(initialName)
   const [aisleId, setAisleId] = useState(sortedAisles[0]?.id ?? '')
-  const [unit, setUnit] = useState<string>(UNITS[0])
+  const [unit, setUnit] = useState<string>(
+    initialUnit && isKnownUnit(initialUnit) ? initialUnit : UNITS[0],
+  )
 
   const canSave = name.trim() !== '' && aisleId !== ''
 

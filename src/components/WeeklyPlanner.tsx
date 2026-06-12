@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { DayOfWeek, ID, PlannedMeal, Recipe } from '../types'
 import { usePantry } from '../state/usePantry'
-import { DAYS, currentWeekDates, dayKey } from '../lib/days'
+import { weekFromToday } from '../lib/days'
 import { pickRandomSuggestions, refillSuggestions } from '../lib/suggest'
 import { getDragPayload, hasDragPayload, type DragPayload } from '../lib/dnd'
 import { MealCard } from './MealCard'
@@ -18,8 +18,8 @@ export function WeeklyPlanner() {
   const meals = data.plan.meals
   const [addingDay, setAddingDay] = useState<DayOfWeek | null>(null)
 
-  const weekDates = useMemo(() => currentWeekDates(), [])
-  const todayKey = dayKey(new Date())
+  const week = useMemo(() => weekFromToday(), [])
+  const todayKey = week[0].key
 
   // Only meals whose recipe still exists.
   const livingMeals = meals.filter((m) => getRecipe(m.recipeId))
@@ -72,11 +72,11 @@ export function WeeklyPlanner() {
       <SuggestionStrip suggestions={suggestions} onShuffle={handleShuffle} />
 
       <div className="space-y-3">
-        {DAYS.map((d) => (
+        {week.map((d) => (
           <DayRow
             key={d.key}
             label={d.label}
-            date={fmtDate(weekDates[d.key])}
+            date={fmtDate(d.date)}
             isToday={d.key === todayKey}
             meals={mealsForDay(d.key)}
             onAdd={() => setAddingDay(d.key)}
@@ -99,7 +99,7 @@ export function WeeklyPlanner() {
       {addingDay && (
         <AddRecipeModal
           day={addingDay}
-          title={`${DAYS.find((d) => d.key === addingDay)!.label} · ${fmtDate(weekDates[addingDay])}`}
+          title={`${week.find((d) => d.key === addingDay)!.label} · ${fmtDate(week.find((d) => d.key === addingDay)!.date)}`}
           onClose={() => setAddingDay(null)}
         />
       )}

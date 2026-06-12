@@ -17,6 +17,8 @@ export interface ParsedRecipe {
   name: string
   servings: number
   instructions: string
+  /** Where the recipe came from (URL or free text); empty when no source line found. */
+  source: string
   ingredients: ParsedIngredient[]
 }
 
@@ -53,6 +55,18 @@ const SECTION_HEADERS = ['ingredients', 'method', 'instructions', 'directions', 
 
 // Leading-quantity matcher: mixed "1 1/2", fraction "1/2", range "2-3", decimal "0.5".
 const QUANTITY_RE = /^\s*(\d+\s+\d+\/\d+|\d+\/\d+|\d+\s*[-–]\s*\d+|\d+(?:\.\d+)?)\s*(.*)$/
+
+// "Source: <url or text>" label, or a line that is nothing but a URL.
+const SOURCE_LABEL_RE = /^source\s*[:\-–]\s*(.+)$/i
+const BARE_URL_RE = /^https?:\/\/\S+$/i
+
+/** Extract the source value from a line, or null if it isn't a source line. */
+function parseSourceLine(line: string): string | null {
+  const labelled = line.match(SOURCE_LABEL_RE)
+  if (labelled) return labelled[1].trim()
+  if (BARE_URL_RE.test(line)) return line
+  return null
+}
 
 function normaliseHeader(line: string): string {
   return line.trim().toLowerCase().replace(/[:\-–.]+$/, '').trim()
@@ -110,12 +124,23 @@ export function parseRecipe(text: string): ParsedRecipe {
   const rawLines = text.split(/\r?\n/)
   const lines = rawLines.map((l) => l.trim())
 
-  // Title: first non-empty line that isn't a header, a servings line, or quantity-led.
+  // Source: first "Source: ..." / bare-URL line anywhere.
+  let source = ''
+  for (const line of lines) {
+    const parsed = line ? parseSourceLine(line) : null
+    if (parsed) {
+      source = parsed
+      break
+    }
+  }
+
+  // Title: first non-empty line that isn't a header, a servings/source line, or quantity-led.
   let name = ''
   for (const line of lines) {
     if (!line) continue
     if (isSectionHeader(line)) continue
     if (/serves?\b|servings?\b/i.test(line)) continue
+    if (parseSourceLine(line)) continue
     if (parseQuantity(line)) continue
     name = line
     break
@@ -147,6 +172,7 @@ export function parseRecipe(text: string): ParsedRecipe {
     if (!line || isSectionHeader(line)) return
     if (line === name) return
     if (/^serves?\s+\d+/i.test(line) || /^\d+\s+servings?/i.test(line)) return
+    if (parseSourceLine(line)) return
 
     const inIngredientSection =
       ingredientsHeaderIdx !== -1 &&
@@ -178,6 +204,7 @@ export function parseRecipe(text: string): ParsedRecipe {
     name,
     servings,
     instructions: instructionLines.join('\n'),
+    source,
     ingredients,
   }
 }
