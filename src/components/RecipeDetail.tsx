@@ -3,6 +3,7 @@ import { usePantry } from '../state/usePantry'
 import { formatIngredient } from '../lib/format'
 import { recipeHasExcludedItem } from '../lib/suggest'
 import { AllergyBadge } from './AllergyBadge'
+import { NotFound } from './NotFound'
 import { btnDanger, btnPrimary, btnSecondary, card, tagBadge } from './ui'
 
 export function RecipeDetail() {
@@ -13,14 +14,7 @@ export function RecipeDetail() {
   const recipe = id ? getRecipe(id) : undefined
 
   if (!recipe) {
-    return (
-      <div className="mx-auto max-w-2xl">
-        <p className="text-gray-500">Recipe not found.</p>
-        <Link to="/recipes" className="text-green-600 hover:underline">
-          ← Back to recipes
-        </Link>
-      </div>
-    )
+    return <NotFound message="Recipe not found." backTo="/recipes" backLabel="Back to recipes" />
   }
 
   function handleDelete() {

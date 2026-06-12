@@ -1,20 +1,24 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { usePantry } from '../state/usePantry'
-import { buildHaveRows, buildShoppingList, type HaveRow } from '../lib/shoppingList'
+import { buildHaveRows, buildRequirements, buildShoppingList, type HaveRow } from '../lib/shoppingList'
 import { formatQuantity } from '../lib/format'
 import { btnSecondary, card, stepBtn } from './ui'
 
 export function ShoppingList() {
   const { data, getItem, sortedAisles, clearHave } = usePantry()
 
+  const requirements = useMemo(
+    () => buildRequirements(data.plan, data.recipes),
+    [data.plan, data.recipes],
+  )
   const groups = useMemo(
-    () => buildShoppingList(data.plan, data.recipes, data.shopping, getItem, sortedAisles),
-    [data.plan, data.recipes, data.shopping, getItem, sortedAisles],
+    () => buildShoppingList(requirements, data.shopping, getItem, sortedAisles),
+    [requirements, data.shopping, getItem, sortedAisles],
   )
   const haveRows = useMemo(
-    () => buildHaveRows(data.plan, data.recipes, data.shopping, getItem, sortedAisles),
-    [data.plan, data.recipes, data.shopping, getItem, sortedAisles],
+    () => buildHaveRows(requirements, data.shopping, getItem, sortedAisles),
+    [requirements, data.shopping, getItem, sortedAisles],
   )
 
   const anyHave = Object.keys(data.shopping.have).length > 0

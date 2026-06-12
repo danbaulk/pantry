@@ -5,7 +5,7 @@ import { roundQuantity } from './format'
 const OTHER_ID = '__other__'
 
 /** Key identifying a mergeable line: same item + unit combine, units stay split. */
-export function lineKey(itemId: ID, unit: string): string {
+function lineKey(itemId: ID, unit: string): string {
   return `${itemId}::${unit}`
 }
 
@@ -39,7 +39,7 @@ export function buildRequirements(plan: WeeklyPlan, recipes: Recipe[]): Map<stri
   return totals
 }
 
-export interface ShoppingLine {
+interface ShoppingLine {
   key: string
   name: string
   itemId: ID
@@ -50,7 +50,7 @@ export interface ShoppingLine {
   have: number
 }
 
-export interface ShoppingGroup {
+interface ShoppingGroup {
   id: string
   name: string
   lines: ShoppingLine[]
@@ -61,15 +61,14 @@ export interface ShoppingGroup {
  * already has, per (item, unit). Lines that net to ≤ 0 (you have enough) drop off.
  */
 export function buildShoppingList(
-  plan: WeeklyPlan,
-  recipes: Recipe[],
+  requirements: Map<string, Requirement>,
   shopping: ShoppingState,
   getItem: (id: ID) => GroceryItem | undefined,
   sortedAisles: Aisle[],
 ): ShoppingGroup[] {
   const byBucket = new Map<string, ShoppingLine[]>()
 
-  for (const req of buildRequirements(plan, recipes).values()) {
+  for (const req of requirements.values()) {
     const key = lineKey(req.itemId, req.unit)
     const have = shopping.have[key] ?? 0
     const quantity = roundQuantity(req.quantity - have)
@@ -117,14 +116,13 @@ export interface HaveRow {
  * buy list (aisle walk-order, then name).
  */
 export function buildHaveRows(
-  plan: WeeklyPlan,
-  recipes: Recipe[],
+  requirements: Map<string, Requirement>,
   shopping: ShoppingState,
   getItem: (id: ID) => GroceryItem | undefined,
   sortedAisles: Aisle[],
 ): HaveRow[] {
   const aisleOrder = new Map(sortedAisles.map((a, i) => [a.id, i]))
-  const rows = [...buildRequirements(plan, recipes).values()].map((req) => {
+  const rows = [...requirements.values()].map((req) => {
     const item = getItem(req.itemId)
     const key = lineKey(req.itemId, req.unit)
     const order = item ? aisleOrder.get(item.aisleId) ?? Number.MAX_SAFE_INTEGER : Number.MAX_SAFE_INTEGER

@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { usePantry } from '../state/usePantry'
+import { useAddForm } from '../hooks/useAddForm'
+import { useEditableField } from '../hooks/useEditableField'
 import { ErrorMessage } from './ErrorMessage'
 import { btnPrimary, btnSecondary, input } from './ui'
 
@@ -19,22 +21,26 @@ export function SupermarketTabs() {
     setActiveSupermarket,
   } = usePantry()
   const [renaming, setRenaming] = useState(false)
-  // The name when the rename started — restored if the field is left blank.
-  const [nameBeforeRename, setNameBeforeRename] = useState('')
   const [adding, setAdding] = useState(false)
-  const [newName, setNewName] = useState('')
   const [error, setError] = useState<string | null>(null)
 
+  // Live rename that reverts to the prior name if the field is left blank.
+  const rename = useEditableField(activeSupermarket.name, (v) =>
+    renameSupermarket(activeSupermarket.id, v),
+  )
+  const addForm = useAddForm((name) => {
+    const id = createSupermarket(name)
+    setActiveSupermarket(id)
+    setAdding(false)
+  })
+
   function startRename() {
-    setNameBeforeRename(activeSupermarket.name)
+    rename.begin()
     setRenaming(true)
   }
 
   function endRename() {
-    // Live edits are already applied; a blank name reverts to what it was.
-    if (!activeSupermarket.name.trim()) {
-      renameSupermarket(activeSupermarket.id, nameBeforeRename)
-    }
+    rename.finish()
     setRenaming(false)
   }
 
@@ -50,16 +56,6 @@ export function SupermarketTabs() {
     }
     const result = deleteSupermarket(activeSupermarket.id)
     setError(result.ok ? null : result.reason)
-  }
-
-  function handleAdd(e: React.FormEvent) {
-    e.preventDefault()
-    const name = newName.trim()
-    if (!name) return
-    const id = createSupermarket(name)
-    setActiveSupermarket(id)
-    setNewName('')
-    setAdding(false)
   }
 
   return (
@@ -120,21 +116,21 @@ export function SupermarketTabs() {
         })}
 
         {adding ? (
-          <form onSubmit={handleAdd} className="inline-flex items-center gap-1">
+          <form onSubmit={addForm.submit} className="inline-flex items-center gap-1">
             <input
               className={`${input} w-40`}
               placeholder="Supermarket name…"
-              value={newName}
+              value={addForm.value}
               autoFocus
-              onChange={(e) => setNewName(e.target.value)}
+              onChange={(e) => addForm.setValue(e.target.value)}
               onBlur={() => {
                 setAdding(false)
-                setNewName('')
+                addForm.setValue('')
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Escape') {
                   setAdding(false)
-                  setNewName('')
+                  addForm.setValue('')
                 }
               }}
             />

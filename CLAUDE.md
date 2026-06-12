@@ -63,10 +63,12 @@ no longer resolves. There is no integrity guard blocking recipe deletion (unlike
 **The shopping list is fully derived from the plan; the user only stores reconciliation
 input.** `PantryData.shopping` is `{ have }` — a `Record<lineKey, number>` of how much of
 each requirement you already own (`lineKey` is `` `${itemId}::${unit}` ``).
-`buildShoppingList()` (`src/lib/shoppingList.ts`) computes the buy list live: it scales each
-meal's ingredients by `(servings ?? recipe.servings) / recipe.servings` and sums per
-`(itemId, unit)` (`buildRequirements`), then subtracts `have`, **dropping lines that net to
-≤ 0**. Mismatched units stay separate (no conversion). Grouping mirrors `buildItemsByAisle`
+`buildRequirements(plan, recipes)` (`src/lib/shoppingList.ts`) computes the scaled recipe
+base live — it scales each meal's ingredients by `(servings ?? recipe.servings) /
+recipe.servings` and sums per `(itemId, unit)`, returning a `Map`. `ShoppingList.tsx`
+computes that map once and feeds it to both `buildShoppingList(requirements, …)` and
+`buildHaveRows(requirements, …)`. `buildShoppingList()` then subtracts `have`, **dropping
+lines that net to ≤ 0**. Mismatched units stay separate (no conversion). Grouping mirrors `buildItemsByAisle`
 (with an "Other" fallback for an unresolvable item). The page (`ShoppingList.tsx`) is a
 **two-column layout**: the aisle-grouped buy list (plain text, no checkboxes), and an
 **"Already have" column** with one row per recipe requirement (`buildHaveRows`, recipe items

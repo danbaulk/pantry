@@ -2,9 +2,12 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import type { GroceryItem } from '../types'
 import { usePantry } from '../state/usePantry'
+import { useEditableField } from '../hooks/useEditableField'
+import { getItemsInAisle } from '../lib/itemsByAisle'
 import { UNITS } from '../lib/units'
 import { GroceryItemEditRow } from './GroceryItemEditRow'
 import { ErrorMessage } from './ErrorMessage'
+import { NotFound } from './NotFound'
 import { UnitSelect } from './UnitSelect'
 import { btn, btnDanger, btnPrimary, btnSecondary, card, input, label } from './ui'
 
@@ -32,8 +35,8 @@ export function AisleDetail() {
   const aisle = aisleId ? getAisle(aisleId) : undefined
   const [error, setError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
-  // The aisle name when the rename input gained focus — restored on blur if left blank.
-  const [nameOnFocus, setNameOnFocus] = useState('')
+  // Reverts the rename input to its prior value if left blank.
+  const rename = useEditableField(aisle?.name ?? '', (v) => aisle && renameAisle(aisle.id, v))
 
   // New-item form state (the aisle is implied by the page).
   const [newName, setNewName] = useState('')
@@ -41,29 +44,21 @@ export function AisleDetail() {
 
   if (!aisle) {
     return (
-      <div className="mx-auto max-w-2xl">
-        <p className="text-gray-500">Aisle not found.</p>
-        <Link to="/supermarket" className="text-green-600 hover:underline">
-          ← Back to the supermarket
-        </Link>
-      </div>
+      <NotFound message="Aisle not found." backTo="/supermarket" backLabel="Back to the supermarket" />
     )
   }
 
-  const items = data.groceryItems
-    .filter((i) => i.aisleId === aisle.id)
-    .sort((a, b) => a.name.localeCompare(b.name))
+  const items = getItemsInAisle(data.groceryItems, aisle.id)
 
   function handleAddItem(e: React.FormEvent) {
     e.preventDefault()
-    if (!aisle || !newName.trim()) return
-    createItem({ name: newName.trim(), aisleId: aisle.id, defaultUnit: newUnit })
+    if (!newName.trim()) return
+    createItem({ name: newName.trim(), aisleId: aisle!.id, defaultUnit: newUnit })
     setNewName('')
   }
 
   function handleDeleteAisle() {
-    if (!aisle) return
-    const res = deleteAisle(aisle.id)
+    const res = deleteAisle(aisle!.id)
     if (res.ok) navigate('/supermarket')
     else setError(res.reason)
   }
@@ -84,10 +79,8 @@ export function AisleDetail() {
           className={`${input} flex-1 text-lg font-bold`}
           value={aisle.name}
           onChange={(e) => renameAisle(aisle.id, e.target.value)}
-          onFocus={() => setNameOnFocus(aisle.name)}
-          onBlur={() => {
-            if (!aisle.name.trim()) renameAisle(aisle.id, nameOnFocus)
-          }}
+          onFocus={rename.begin}
+          onBlur={rename.finish}
         />
         <button className={btnDanger} onClick={handleDeleteAisle}>
           Delete aisle
