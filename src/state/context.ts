@@ -1,5 +1,5 @@
 import { createContext } from 'react'
-import type { Aisle, DayOfWeek, GroceryItem, ID, PantryData, Recipe } from '../types'
+import type { Aisle, DayOfWeek, GroceryItem, ID, PantryData, Recipe, SupermarketProfile } from '../types'
 
 export type RecipeInput = Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>
 export type GroceryItemInput = Omit<GroceryItem, 'id'>
@@ -13,8 +13,18 @@ export interface PantryContextValue {
   getRecipe: (id: ID) => Recipe | undefined
   getItem: (id: ID) => GroceryItem | undefined
   getAisle: (id: ID) => Aisle | undefined
-  /** Aisles sorted by walk-order. */
+  /**
+   * Aisles in the ACTIVE supermarket's walk-order (dangling ids dropped, aisles
+   * missing from the profile appended at the end).
+   */
   sortedAisles: Aisle[]
+  /** All supermarket profiles — each is its own ordering of the shared aisles. */
+  supermarkets: SupermarketProfile[]
+  /**
+   * The active profile; heals a stale stored id to the first profile. Never
+   * undefined (storage guarantees at least one profile).
+   */
+  activeSupermarket: SupermarketProfile
   /** `settings.excludedItemIds` as a Set — pass to the `suggest.ts` allergy helpers. */
   excludedItemIds: Set<ID>
 
@@ -38,6 +48,14 @@ export interface PantryContextValue {
    * wouldn't change.
    */
   moveAisle: (id: ID, toIndex: number) => void
+
+  // Supermarket profiles
+  /** Creates a profile copying the active profile's (healed) ordering; returns its id. */
+  createSupermarket: (name: string) => ID
+  renameSupermarket: (id: ID, name: string) => void
+  /** Guarded: refuses to delete the last remaining profile. */
+  deleteSupermarket: (id: ID) => DeleteResult
+  setActiveSupermarket: (id: ID) => void
 
   // Weekly plan
   addMeal: (recipeId: ID, day?: DayOfWeek) => void
