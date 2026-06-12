@@ -5,6 +5,7 @@ import type { RecipeInput } from '../state/context'
 import { formToRecipeInput, useRecipeForm } from '../hooks/useRecipeForm'
 import { IngredientEditor } from './IngredientEditor'
 import { ErrorMessage } from './ErrorMessage'
+import { NotFound } from './NotFound'
 import { btnPrimary, btnSecondary, card, input, label } from './ui'
 
 export function RecipeEditor() {
@@ -27,11 +28,7 @@ export function RecipeEditor() {
 
   // Editing a route id that doesn't resolve to a recipe.
   if (id && !existing) {
-    return (
-      <div className="mx-auto max-w-2xl">
-        <p className="text-gray-500">Recipe not found.</p>
-      </div>
-    )
+    return <NotFound message="Recipe not found." />
   }
 
   function handleSave(e: React.FormEvent) {

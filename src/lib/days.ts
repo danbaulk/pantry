@@ -14,11 +14,6 @@ export const DAYS: Array<{ key: DayOfWeek; label: string }> = [
   { key: 'sun', label: 'Sunday' },
 ]
 
-/** The DayOfWeek key for a date, treating Monday as the start of the week. */
-export function dayKey(date: Date): DayOfWeek {
-  return DAYS[(date.getDay() + 6) % 7].key
-}
-
 /**
  * The seven days starting from `today` (a rolling week), each with its label and
  * actual date (today + i). The first entry is always today, so the planner reads

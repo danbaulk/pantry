@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Aisle } from '../types'
 import { usePantry } from '../state/usePantry'
+import { useAddForm } from '../hooks/useAddForm'
 import { pluralize } from '../lib/format'
+import { getItemsInAisle } from '../lib/itemsByAisle'
 import { getDragPayload, hasDragPayload, setDragPayload } from '../lib/dnd'
 import { SupermarketTabs } from './SupermarketTabs'
 import { btnPrimary, card, input } from './ui'
@@ -13,22 +15,13 @@ import { btnPrimary, card, input } from './ui'
  */
 export function Supermarket() {
   const { sortedAisles, data, createAisle, moveAisle } = usePantry()
-  const [newName, setNewName] = useState('')
+  const addForm = useAddForm(createAisle)
   // The aisle drag in flight. dataTransfer is unreadable during dragover, so rows
   // need this to dim the source and hide no-op insertion points.
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const draggedIdx = draggingId ? sortedAisles.findIndex((a) => a.id === draggingId) : -1
 
-  const itemCount = (aisleId: string) =>
-    data.groceryItems.filter((i) => i.aisleId === aisleId).length
-
-  function handleAdd(e: React.FormEvent) {
-    e.preventDefault()
-    const name = newName.trim()
-    if (!name) return
-    createAisle(name)
-    setNewName('')
-  }
+  const itemCount = (aisleId: string) => getItemsInAisle(data.groceryItems, aisleId).length
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -39,12 +32,12 @@ export function Supermarket() {
         order. Drag a row to match your route; click an aisle to manage the items in it.
       </p>
 
-      <form onSubmit={handleAdd} className="mb-4 flex gap-2">
+      <form onSubmit={addForm.submit} className="mb-4 flex gap-2">
         <input
           className={input}
           placeholder="New aisle name…"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
+          value={addForm.value}
+          onChange={(e) => addForm.setValue(e.target.value)}
         />
         <button type="submit" className={btnPrimary}>
           Add aisle

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { DayOfWeek, ID, PlannedMeal, Recipe } from '../types'
+import type { DayOfWeek, ID, PlannedMeal } from '../types'
 import { usePantry } from '../state/usePantry'
 import { weekFromToday } from '../lib/days'
 import { pickRandomSuggestions, refillSuggestions } from '../lib/suggest'
@@ -41,9 +41,10 @@ export function WeeklyPlanner() {
     )
   }, [data.recipes, excludedItemIds, plannedRecipeIds])
 
-  const suggestions = suggestionIds
-    .map((id) => getRecipe(id))
-    .filter((r): r is Recipe => r !== undefined)
+  const suggestions = suggestionIds.flatMap((id) => {
+    const r = getRecipe(id)
+    return r ? [r] : []
+  })
 
   function handleShuffle() {
     setSuggestionIds(

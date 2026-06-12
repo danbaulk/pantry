@@ -1,8 +1,15 @@
-import type { Aisle, GroceryItem } from '../types'
+import type { Aisle, GroceryItem, ID } from '../types'
 
 export interface ItemsByAisle {
   aisle: Aisle
   items: GroceryItem[]
+}
+
+/** Grocery items in one aisle, sorted by name. */
+export function getItemsInAisle(groceryItems: GroceryItem[], aisleId: ID): GroceryItem[] {
+  return groceryItems
+    .filter((i) => i.aisleId === aisleId)
+    .sort((a, b) => a.name.localeCompare(b.name))
 }
 
 /**
