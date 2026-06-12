@@ -19,16 +19,21 @@ export function dayKey(date: Date): DayOfWeek {
   return DAYS[(date.getDay() + 6) % 7].key
 }
 
-/** Dates for the current Mon→Sun week, keyed by weekday. */
-export function currentWeekDates(today: Date = new Date()): Record<DayOfWeek, Date> {
-  const monday = new Date(today)
-  monday.setHours(0, 0, 0, 0)
-  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7))
-  const out = {} as Record<DayOfWeek, Date>
-  DAYS.forEach((d, i) => {
-    const date = new Date(monday)
-    date.setDate(monday.getDate() + i)
-    out[d.key] = date
+/**
+ * The seven days starting from `today` (a rolling week), each with its label and
+ * actual date (today + i). The first entry is always today, so the planner reads
+ * top-down from now rather than from a fixed Monday.
+ */
+export function weekFromToday(
+  today: Date = new Date(),
+): Array<{ key: DayOfWeek; label: string; date: Date }> {
+  const start = new Date(today)
+  start.setHours(0, 0, 0, 0)
+  const startIndex = (today.getDay() + 6) % 7 // index of today within DAYS (Mon→Sun)
+  return DAYS.map((_, i) => {
+    const day = DAYS[(startIndex + i) % DAYS.length]
+    const date = new Date(start)
+    date.setDate(start.getDate() + i)
+    return { key: day.key, label: day.label, date }
   })
-  return out
 }
