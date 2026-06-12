@@ -6,16 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The Pantry is a **personal, local-first** meal-planning app (single author, no accounts).
 The end goal is that the **weekly shopping list builds itself**: pick meals, get an
-aisle-grouped, scaled, unit-summed list. **All six phases are done**: the recipe library +
+aisle-grouped, scaled, unit-summed list. **All seven phases are done**: the recipe library +
 grocery catalogue (Phase 1), recipe search/tag filtering + paste-import (Phase 2), the
 manual weekly planner with per-meal serving overrides (Phase 3), the **shopping list**
 that derives an aisle-grouped, scaled, unit-summed checklist from the plan with ad-hoc
 items, "already have", and tick-off (Phase 4), the **randomiser + suggestions + allergy
 settings** (Phase 5), and a round of **UX refinements** (Phase 6: the catalogue + aisle
 pages merged into one **Supermarket** section, allergen "Avoid" toggles on its aisle
-pages, drag-and-drop aisle reordering, planner polish). A nutrition-tracking Phase 6 was
-built, trialled, and **rejected** — see the decisions log. See `docs/PROJECT_PLAN.md`
-for the full roadmap and decisions log before starting new work.
+pages, drag-and-drop aisle reordering, planner polish), and **supermarket profiles**
+(Phase 7: per-store aisle orderings switched via tabs on the Supermarket page). A
+nutrition-tracking Phase 6 was built, trialled, and **rejected** — see the decisions log.
+See `docs/PROJECT_PLAN.md` for the full roadmap and decisions log before starting new work.
 
 ## Commands
 
@@ -37,7 +38,8 @@ React Router v7. Client-only SPA, no backend.
 ## Architecture
 
 **Single source of truth is `PantryData`** (`src/types.ts`): `{ version, aisles,
-groceryItems, recipes, plan }`. The three catalogue entities form a strict dependency chain:
+supermarkets, activeSupermarketId, groceryItems, recipes, plan, shopping, settings }`.
+The three catalogue entities form a strict dependency chain:
 
 - `Recipe.ingredients[]` reference a `GroceryItem` by `itemId` (catalogue-first: an
   ingredient is always a quantity + unit applied to an existing grocery item).
@@ -110,10 +112,12 @@ recipe edits.
 **Persistence is isolated to `src/lib/storage.ts`** (localStorage key `pantry:data`).
 `PantryProvider` auto-saves the whole blob on every change via an effect (skipping the
 initial load). On first run or on a parse failure, `buildSeedData()` (`src/lib/seed.ts`)
-seeds starter aisles + grocery items. `PantryData.version` is currently `4`; on load,
+seeds starter aisles + grocery items (plus one default supermarket profile).
+`PantryData.version` is currently `5`; on load,
 `migrate()` upgrades older blobs one step at a time via `step()` (v1→v2 backfilled the empty
-`plan`, v2→v3 the empty `shopping` list, v3→v4 the empty `settings`) so an old blob chains
-all the way up; an unknown
+`plan`, v2→v3 the empty `shopping` list, v3→v4 the empty `settings`, v4→v5 built one
+default supermarket profile from the old per-aisle `order` field and stripped it) so an
+old blob chains all the way up; an unknown
 version throws → re-seed. When the shape changes, **bump `CURRENT_VERSION` and add a new
 `case` to `step()`** that backfills the new fields. This file is the intended swap point
 for a real backend later, so keep persistence out of components.
@@ -125,13 +129,31 @@ guarded) and its items are added (aisle implied by the page), edited (the edit r
 an aisle select, so saving can move an item to another aisle — it leaves the page),
 avoided, or deleted. `/catalogue` and `/aisles` redirect to `/supermarket`.
 
-**Aisle ordering:** aisles carry an `order` field (store walk-order). Use `sortedAisles`
-from context for display. Reordering is **drag-and-drop on the Supermarket page** (an
+**Aisle ordering lives on supermarket profiles.** All profiles share the one aisle
+catalogue; each `SupermarketProfile` (`{ id, name, aisleIds }`) is its own walk-order of
+it, and `PantryData.activeSupermarketId` picks the profile the whole app follows
+(supermarket page, pickers, shopping list). The context exposes `supermarkets`,
+`activeSupermarket` (heals a stale id to the first profile — storage guarantees
+`supermarkets` is never empty) and **`sortedAisles`** — the aisles in the active
+profile's order via the pure, self-healing `orderAisles()` (`src/lib/supermarkets.ts`:
+drops dangling ids, collapses duplicates, appends aisles missing from the profile;
+read-time only). Always consume `sortedAisles` for display. Profile mutations:
+`createSupermarket(name)` (copies the active profile's healed ordering, returns the id),
+`renameSupermarket`, `deleteSupermarket` (**guarded** — refuses to delete the last
+profile, returns a `DeleteResult`; deleting the active profile reassigns the active id),
+`setActiveSupermarket`. Cascades preserve the no-dangling-refs convention: `createAisle`
+appends the new aisle to **every** profile's `aisleIds`; `deleteAisle` (still
+integrity-guarded) drops the id from every profile. The Supermarket page has a
+**tab strip** (`SupermarketTabs.tsx`) — one tab per profile, ✎ rename (live, like
+AisleDetail) and ✕ delete (hidden at one profile) on the active tab, an inline "+" add
+form. Aisle reordering is **drag-and-drop on the Supermarket page** (an
 `{ type: 'aisle' }` payload via `src/lib/dnd.ts`; rows drag by a ⠿ handle so the
 click-through link doesn't start drags; insert-before-row semantics plus a dashed end
 drop-zone shown mid-drag). `moveAisle(id, toIndex)` splices the aisle in front of the row
-currently at `toIndex` (pass `sortedAisles.length` for the end) and reassigns contiguous
-`order` values; self/adjacent drops no-op.
+currently at `toIndex` (pass `sortedAisles.length` for the end) **within the active
+profile's `aisleIds` only**; self/adjacent drops no-op. (A "shopping mode" — pick the
+store you're in on the shopping page — is parked; `orderAisles` and
+`buildShoppingList(…, sortedAisles)` already support ordering by any profile.)
 
 ## Conventions
 

@@ -4,6 +4,7 @@ import type { Aisle } from '../types'
 import { usePantry } from '../state/usePantry'
 import { pluralize } from '../lib/format'
 import { getDragPayload, hasDragPayload, setDragPayload } from '../lib/dnd'
+import { SupermarketTabs } from './SupermarketTabs'
 import { btnPrimary, card, input } from './ui'
 
 /**
@@ -13,8 +14,10 @@ import { btnPrimary, card, input } from './ui'
 export function Supermarket() {
   const { sortedAisles, data, createAisle, moveAisle } = usePantry()
   const [newName, setNewName] = useState('')
-  // An aisle drag is in flight — show the move-to-end drop zone.
-  const [dragging, setDragging] = useState(false)
+  // The aisle drag in flight. dataTransfer is unreadable during dragover, so rows
+  // need this to dim the source and hide no-op insertion points.
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+  const draggedIdx = draggingId ? sortedAisles.findIndex((a) => a.id === draggingId) : -1
 
   const itemCount = (aisleId: string) =>
     data.groceryItems.filter((i) => i.aisleId === aisleId).length
@@ -30,9 +33,10 @@ export function Supermarket() {
   return (
     <div className="mx-auto max-w-2xl">
       <h1 className="mb-1 text-2xl font-bold text-gray-900">Supermarket</h1>
+      <SupermarketTabs />
       <p className="mb-4 text-sm text-gray-500">
-        Aisles ordered the way you walk the store. Drag a row to match your route; click an
-        aisle to manage the items in it.
+        Aisles ordered the way you walk this store — each supermarket tab keeps its own
+        order. Drag a row to match your route; click an aisle to manage the items in it.
       </p>
 
       <form onSubmit={handleAdd} className="mb-4 flex gap-2">
@@ -53,15 +57,13 @@ export function Supermarket() {
             key={aisle.id}
             aisle={aisle}
             itemCount={itemCount(aisle.id)}
-            onDropBefore={(draggedId) => moveAisle(draggedId, idx)}
-            onDragStart={() => setDragging(true)}
-            onDragEnd={() => setDragging(false)}
+            idx={idx}
+            draggedIdx={draggedIdx}
+            onDropAt={(draggedId, toIndex) => moveAisle(draggedId, toIndex)}
+            onDragStart={() => setDraggingId(aisle.id)}
+            onDragEnd={() => setDraggingId(null)}
           />
         ))}
-
-        {dragging && (
-          <EndDropZone onDropEnd={(draggedId) => moveAisle(draggedId, sortedAisles.length)} />
-        )}
       </ul>
 
       {sortedAisles.length === 0 && (
@@ -71,58 +73,84 @@ export function Supermarket() {
   )
 }
 
+type DropPos = 'before' | 'after'
+
+/** Which side of the row the cursor is on — top half inserts before it, bottom half after. */
+function dropPosFromEvent(e: React.DragEvent<HTMLLIElement>): DropPos {
+  const rect = e.currentTarget.getBoundingClientRect()
+  return e.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
+}
+
 /**
  * One aisle row: a drag handle (handle-only so the click-through link doesn't start
- * drags) and a link into the aisle. The whole row is a drop target — dropping
- * another aisle on it inserts that aisle before this one.
+ * drags) and a link into the aisle. The whole row is a drop target: a green bar in
+ * the gap above or below shows where the dragged aisle will land.
  */
 function AisleRow({
   aisle,
   itemCount,
-  onDropBefore,
+  idx,
+  draggedIdx,
+  onDropAt,
   onDragStart,
   onDragEnd,
 }: {
   aisle: Aisle
   itemCount: number
-  onDropBefore: (draggedId: string) => void
+  idx: number
+  draggedIdx: number
+  onDropAt: (draggedId: string, toIndex: number) => void
   onDragStart: () => void
   onDragEnd: () => void
 }) {
-  const [dragOver, setDragOver] = useState(false)
+  const [dropPos, setDropPos] = useState<DropPos | null>(null)
+
+  const targetIdx = (pos: DropPos) => (pos === 'before' ? idx : idx + 1)
+  // Inserting back where the dragged row already sits (its own two gaps) moves nothing.
+  const isNoOp = (pos: DropPos) =>
+    targetIdx(pos) === draggedIdx || targetIdx(pos) === draggedIdx + 1
 
   return (
     <li
-      className={`${card} flex items-center gap-2 ${
-        dragOver ? 'border-green-400 ring-2 ring-green-300' : ''
+      className={`${card} relative flex items-center gap-2 ${
+        idx === draggedIdx ? 'opacity-50' : ''
       }`}
       onDragOver={(e) => {
         if (!hasDragPayload(e)) return
         e.preventDefault()
-        setDragOver(true)
+        const pos = dropPosFromEvent(e)
+        setDropPos(isNoOp(pos) ? null : pos)
       }}
       onDragLeave={(e) => {
         // dragleave also fires when moving onto a child — only clear on a real exit.
-        if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false)
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropPos(null)
       }}
       onDrop={(e) => {
         e.preventDefault()
-        setDragOver(false)
+        setDropPos(null)
         const payload = getDragPayload(e)
-        if (payload?.type === 'aisle') onDropBefore(payload.id)
+        if (payload?.type === 'aisle') onDropAt(payload.id, targetIdx(dropPosFromEvent(e)))
       }}
     >
+      {dropPos && (
+        <span
+          className={`pointer-events-none absolute inset-x-0 h-0.5 rounded bg-green-500 ${
+            dropPos === 'before' ? '-top-[5px]' : '-bottom-[5px]'
+          }`}
+        />
+      )}
+
       <span
         draggable
         title="Drag to reorder"
-        className="cursor-grab px-1 text-gray-400 select-none active:cursor-grabbing"
+        className="-my-1 cursor-grab px-2 py-1 text-lg leading-none text-gray-400 select-none active:cursor-grabbing"
         onDragStart={(e) => {
           setDragPayload(e, { type: 'aisle', id: aisle.id })
           // Ghost the whole row, not just the handle glyph.
           e.dataTransfer.setDragImage(e.currentTarget.closest('li')!, 20, 20)
           onDragStart()
         }}
-        // dragend fires on the source even for cancelled drags, so the end zone always clears.
+        // dragend fires on the source even for cancelled drags, so the dimming always clears.
         onDragEnd={onDragEnd}
       >
         ⠿
@@ -138,35 +166,6 @@ function AisleRow({
           {itemCount} {pluralize('item', itemCount)} ›
         </span>
       </Link>
-    </li>
-  )
-}
-
-/** Drop target for "make it last" — insert-before on rows can't reach the end slot. */
-function EndDropZone({ onDropEnd }: { onDropEnd: (draggedId: string) => void }) {
-  const [dragOver, setDragOver] = useState(false)
-
-  return (
-    <li
-      className={`rounded-md border border-dashed py-2 text-center text-sm ${
-        dragOver ? 'border-green-400 text-green-600 ring-2 ring-green-300' : 'border-gray-300 text-gray-400'
-      }`}
-      onDragOver={(e) => {
-        if (!hasDragPayload(e)) return
-        e.preventDefault()
-        setDragOver(true)
-      }}
-      onDragLeave={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false)
-      }}
-      onDrop={(e) => {
-        e.preventDefault()
-        setDragOver(false)
-        const payload = getDragPayload(e)
-        if (payload?.type === 'aisle') onDropEnd(payload.id)
-      }}
-    >
-      Drop here to move to the end
     </li>
   )
 }

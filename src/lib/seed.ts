@@ -1,5 +1,6 @@
-import type { Aisle, GroceryItem, PantryData } from '../types'
+import type { Aisle, GroceryItem, PantryData, SupermarketProfile } from '../types'
 import { newId } from './ids'
+import { DEFAULT_SUPERMARKET_NAME } from './supermarkets'
 
 /** Starter aisles in a sensible store walk-order. */
 const SEED_AISLES = [
@@ -65,11 +66,17 @@ const SEED_ITEMS: Array<[string, string, string]> = [
 
 /** Build a fresh seeded dataset with freshly minted ids. */
 export function buildSeedData(): PantryData {
-  const aisles: Aisle[] = SEED_AISLES.map((name, i) => ({
+  const aisles: Aisle[] = SEED_AISLES.map((name) => ({
     id: newId(),
     name,
-    order: i,
   }))
+
+  // SEED_AISLES are already in walk-order, so the default profile mirrors them.
+  const supermarket: SupermarketProfile = {
+    id: newId(),
+    name: DEFAULT_SUPERMARKET_NAME,
+    aisleIds: aisles.map((a) => a.id),
+  }
 
   const aisleByName = new Map(aisles.map((a) => [a.name, a]))
 
@@ -80,8 +87,10 @@ export function buildSeedData(): PantryData {
   })
 
   return {
-    version: 4,
+    version: 5,
     aisles,
+    supermarkets: [supermarket],
+    activeSupermarketId: supermarket.id,
     groceryItems,
     recipes: [],
     plan: { meals: [] },

@@ -3,8 +3,20 @@ export type ID = string
 export interface Aisle {
   id: ID
   name: string
-  /** Walk-order position; lower comes first in a store pass. */
-  order: number
+}
+
+/**
+ * A supermarket profile: one user-named ordering of the shared aisle catalogue.
+ * All profiles reference the same aisles; only the walk-order differs.
+ */
+export interface SupermarketProfile {
+  id: ID
+  name: string
+  /**
+   * Aisle ids in this store's walk-order. May drift (deleted/missing aisles) —
+   * order via `orderAisles()` (src/lib/supermarkets.ts), which heals at read time.
+   */
+  aisleIds: ID[]
 }
 
 export interface GroceryItem {
@@ -72,8 +84,11 @@ export interface Settings {
 }
 
 export interface PantryData {
-  version: 4
+  version: 5
   aisles: Aisle[]
+  /** Never empty — storage guarantees at least one profile on load. */
+  supermarkets: SupermarketProfile[]
+  activeSupermarketId: ID
   groceryItems: GroceryItem[]
   recipes: Recipe[]
   plan: WeeklyPlan

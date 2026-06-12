@@ -1,6 +1,6 @@
 # The Pantry — Plan
 
-_Last updated: 2026-06-11 · Status: Phases 1–6 shipped_
+_Last updated: 2026-06-11 · Status: Phases 1–7 shipped_
 
 ## What this is
 
@@ -143,6 +143,22 @@ aisle from the supermarket, mark an item "Avoid", and confirm its recipes get ba
 the planner and drop out of suggestions; drag an aisle row to reorder and confirm the
 aisle list and shopping list follow.
 
+### Phase 7 — Supermarket profiles
+**Goal:** Per-store aisle orderings, so the shopping list can match whichever
+supermarket you're walking.
+**Includes:**
+- Multiple **supermarket profiles** (e.g. "Tesco", "M&S") — all sharing the one aisle
+  catalogue, each holding its own walk-order of it.
+- A **tab strip** on the Supermarket page to switch the active profile, with inline
+  add / rename / delete (guarded: never below one profile).
+- The active profile drives `sortedAisles` app-wide — the supermarket page, all
+  pickers, and the shopping list follow it.
+**Explicitly not (yet):** the full "shopping mode" (picking the store from the shopping
+page) — parked; the data model already supports it.
+**How we'll run & test it locally:** add a second profile, drag an aisle into a
+different position on it, switch tabs and confirm the supermarket page and shopping
+list re-order per profile while the other profile is untouched.
+
 ## Local-first build ethos
 
 Phase 1 should be implementable with the **simplest tools that work** — a minimal local
@@ -165,6 +181,11 @@ build-time decision and is deliberately left open here; the only fixed choice is
   users*, building on the basic paste/import in Phase 2).
 - Import a recipe from a **URL** (scraping) — an upgrade on the Phase 2 paste/import.
 - **Unit conversion** in shopping-list aggregation.
+- **Shopping mode** — pick which supermarket you're in from the shopping page and the
+  list re-orders to that store's walk (quick profile switch, no need to change the
+  app-wide active profile). The Phase 7 data model already supports it: `orderAisles()`
+  is pure/per-profile and `buildShoppingList(…, sortedAisles)` takes the ordering as a
+  parameter.
 - **Nutrition tracking** — built and trialled as the original Phase 6 (per-serving
   macros + planner roll-up), then rejected and reverted (2026-06-11); subsumes the
   earlier auto-filled-nutrition-database idea.
@@ -193,6 +214,26 @@ basket rather than just a personal tool.
 
 ## Decisions log
 
+- **2026-06-11** — Phase 7: **supermarket profiles**. A profile
+  (`SupermarketProfile = { id, name, aisleIds }`) is one user-named **ordering of the
+  shared aisle catalogue** — per-profile aisle _sets_ were considered and rejected
+  (they'd force a per-profile aisle assignment on every grocery item). `Aisle.order` is
+  **removed**; walk-order lives in each profile's `aisleIds` and `PantryData` gains
+  top-level `supermarkets` + `activeSupermarketId` (**not** inside `settings`, which
+  semantically is the allergy list and whose storage coercion rebuilds it as exactly
+  `{ excludedItemIds }`). Version bump to **5**; the v4→v5 step builds one
+  "My supermarket" profile from the old order and strips the field. `sortedAisles` keeps
+  its name/type but is now the **active** profile's order via the pure, read-time
+  self-healing `orderAisles()` (`src/lib/supermarkets.ts` — drops dangling ids, appends
+  missing aisles), so every existing consumer (pickers, shopping list) needed zero
+  changes. Cascades follow the house convention: `createAisle` appends to **all**
+  profiles, `deleteAisle` drops the id from all; `deleteSupermarket` is guarded (never
+  below one profile, `DeleteResult`) and reassigns the active id when the active store
+  is deleted. UI is a **tab strip** on the Supermarket page (`SupermarketTabs.tsx`):
+  tabs switch the active profile app-wide (the shopping list follows immediately), ✎
+  live-rename + ✕ delete on the active tab, inline "+" add (the new profile copies the
+  active ordering and becomes active). The full **shopping mode** (per-trip store pick
+  on the shopping page) is parked — the model already supports it.
 - **2026-06-11** — Catalogue + Aisles merged into one **Supermarket** section (route
   `/supermarket`; the old `/catalogue` and `/aisles` routes redirect there).
   `Supermarket` lists the drag-reorderable aisle rows, each **clicking through** to

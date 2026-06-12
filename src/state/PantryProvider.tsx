@@ -4,6 +4,7 @@ import type { Aisle, DayOfWeek, GroceryItem, ID, PantryData, PlannedMeal, Recipe
 import { load, save } from '../lib/storage'
 import { newId } from '../lib/ids'
 import { pluralize } from '../lib/format'
+import { orderAisles } from '../lib/supermarkets'
 import {
   PantryContext,
   type DeleteResult,
@@ -31,9 +32,13 @@ export function PantryProvider({ children }: { children: ReactNode }) {
   const getRecipe = useCallback((id: ID) => data.recipes.find((r) => r.id === id), [data.recipes])
   const getItem = useCallback((id: ID) => data.groceryItems.find((i) => i.id === id), [data.groceryItems])
   const getAisle = useCallback((id: ID) => data.aisles.find((a) => a.id === id), [data.aisles])
+  const activeSupermarket = useMemo(
+    () => data.supermarkets.find((s) => s.id === data.activeSupermarketId) ?? data.supermarkets[0],
+    [data.supermarkets, data.activeSupermarketId],
+  )
   const sortedAisles = useMemo(
-    () => [...data.aisles].sort((a, b) => a.order - b.order),
-    [data.aisles],
+    () => orderAisles(data.aisles, activeSupermarket.aisleIds),
+    [data.aisles, activeSupermarket],
   )
   const excludedItemIds = useMemo(
     () => new Set(data.settings.excludedItemIds),
@@ -109,11 +114,13 @@ export function PantryProvider({ children }: { children: ReactNode }) {
 
   // --- Aisles ---
   const createAisle = useCallback((name: string): Aisle => {
-    const aisle: Aisle = { id: newId(), name, order: Number.MAX_SAFE_INTEGER }
-    setData((d) => {
-      const maxOrder = d.aisles.reduce((m, a) => Math.max(m, a.order), -1)
-      return { ...d, aisles: [...d.aisles, { ...aisle, order: maxOrder + 1 }] }
-    })
+    const aisle: Aisle = { id: newId(), name }
+    setData((d) => ({
+      ...d,
+      aisles: [...d.aisles, aisle],
+      // Every profile gets the new aisle at the end of its walk.
+      supermarkets: d.supermarkets.map((s) => ({ ...s, aisleIds: [...s.aisleIds, aisle.id] })),
+    }))
     return aisle
   }, [])
 
@@ -130,7 +137,16 @@ export function PantryProvider({ children }: { children: ReactNode }) {
           reason: `${usedBy.length} ${pluralize('grocery item', usedBy.length)} still in this aisle`,
         }
       }
-      setData((d) => ({ ...d, aisles: d.aisles.filter((a) => a.id !== id) }))
+      // Cascade: drop the aisle from every profile's walk-order so no profile keeps
+      // a dangling ref — mirrors deleteItem's excludedItemIds cascade.
+      setData((d) => ({
+        ...d,
+        aisles: d.aisles.filter((a) => a.id !== id),
+        supermarkets: d.supermarkets.map((s) => ({
+          ...s,
+          aisleIds: s.aisleIds.filter((x) => x !== id),
+        })),
+      }))
       return { ok: true }
     },
     [data.groceryItems],
@@ -138,21 +154,68 @@ export function PantryProvider({ children }: { children: ReactNode }) {
 
   const moveAisle = useCallback((id: ID, toIndex: number) => {
     setData((d) => {
-      const sorted = [...d.aisles].sort((a, b) => a.order - b.order)
-      const fromIdx = sorted.findIndex((a) => a.id === id)
+      const active = d.supermarkets.find((s) => s.id === d.activeSupermarketId) ?? d.supermarkets[0]
+      // Heal first so indices match the rendered rows (and the healed order persists).
+      const ids = orderAisles(d.aisles, active.aisleIds).map((a) => a.id)
+      const fromIdx = ids.indexOf(id)
       if (fromIdx === -1) return d
       // `toIndex` is pre-removal ("insert before the row currently there"); taking the
       // dragged aisle out first shifts later targets left by one. Clamp stray indices.
       const insertAt = Math.max(
         0,
-        Math.min(fromIdx < toIndex ? toIndex - 1 : toIndex, sorted.length - 1),
+        Math.min(fromIdx < toIndex ? toIndex - 1 : toIndex, ids.length - 1),
       )
       if (insertAt === fromIdx) return d
-      const [moved] = sorted.splice(fromIdx, 1)
-      sorted.splice(insertAt, 0, moved)
-      // Reassign contiguous order values to reflect new sequence.
-      return { ...d, aisles: sorted.map((a, i) => ({ ...a, order: i })) }
+      ids.splice(fromIdx, 1)
+      ids.splice(insertAt, 0, id)
+      return {
+        ...d,
+        supermarkets: d.supermarkets.map((s) => (s.id === active.id ? { ...s, aisleIds: ids } : s)),
+      }
     })
+  }, [])
+
+  // --- Supermarket profiles ---
+  const createSupermarket = useCallback((name: string): ID => {
+    const id = newId()
+    setData((d) => {
+      const active = d.supermarkets.find((s) => s.id === d.activeSupermarketId) ?? d.supermarkets[0]
+      // Copy the active profile's healed ordering so the new store starts complete.
+      const aisleIds = orderAisles(d.aisles, active.aisleIds).map((a) => a.id)
+      return { ...d, supermarkets: [...d.supermarkets, { id, name, aisleIds }] }
+    })
+    return id
+  }, [])
+
+  const renameSupermarket = useCallback((id: ID, name: string) => {
+    setData((d) => ({
+      ...d,
+      supermarkets: d.supermarkets.map((s) => (s.id === id ? { ...s, name } : s)),
+    }))
+  }, [])
+
+  const deleteSupermarket = useCallback(
+    (id: ID): DeleteResult => {
+      if (data.supermarkets.length <= 1) {
+        return { ok: false, reason: 'You need at least one supermarket' }
+      }
+      setData((d) => {
+        const remaining = d.supermarkets.filter((s) => s.id !== id)
+        return {
+          ...d,
+          supermarkets: remaining,
+          // Deleting the active store hands the baton to the first remaining one.
+          activeSupermarketId:
+            d.activeSupermarketId === id ? remaining[0].id : d.activeSupermarketId,
+        }
+      })
+      return { ok: true }
+    },
+    [data.supermarkets],
+  )
+
+  const setActiveSupermarket = useCallback((id: ID) => {
+    setData((d) => ({ ...d, activeSupermarketId: id }))
   }, [])
 
   // --- Weekly plan ---
@@ -222,6 +285,8 @@ export function PantryProvider({ children }: { children: ReactNode }) {
       getItem,
       getAisle,
       sortedAisles,
+      supermarkets: data.supermarkets,
+      activeSupermarket,
       excludedItemIds,
       createRecipe,
       updateRecipe,
@@ -233,6 +298,10 @@ export function PantryProvider({ children }: { children: ReactNode }) {
       renameAisle,
       deleteAisle,
       moveAisle,
+      createSupermarket,
+      renameSupermarket,
+      deleteSupermarket,
+      setActiveSupermarket,
       addMeal,
       removeMeal,
       setMealDay,
@@ -247,6 +316,7 @@ export function PantryProvider({ children }: { children: ReactNode }) {
       getItem,
       getAisle,
       sortedAisles,
+      activeSupermarket,
       excludedItemIds,
       createRecipe,
       updateRecipe,
@@ -258,6 +328,10 @@ export function PantryProvider({ children }: { children: ReactNode }) {
       renameAisle,
       deleteAisle,
       moveAisle,
+      createSupermarket,
+      renameSupermarket,
+      deleteSupermarket,
+      setActiveSupermarket,
       addMeal,
       removeMeal,
       setMealDay,

@@ -32,6 +32,8 @@ export function AisleDetail() {
   const aisle = aisleId ? getAisle(aisleId) : undefined
   const [error, setError] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
+  // The aisle name when the rename input gained focus — restored on blur if left blank.
+  const [nameOnFocus, setNameOnFocus] = useState('')
 
   // New-item form state (the aisle is implied by the page).
   const [newName, setNewName] = useState('')
@@ -82,6 +84,10 @@ export function AisleDetail() {
           className={`${input} flex-1 text-lg font-bold`}
           value={aisle.name}
           onChange={(e) => renameAisle(aisle.id, e.target.value)}
+          onFocus={() => setNameOnFocus(aisle.name)}
+          onBlur={() => {
+            if (!aisle.name.trim()) renameAisle(aisle.id, nameOnFocus)
+          }}
         />
         <button className={btnDanger} onClick={handleDeleteAisle}>
           Delete aisle

@@ -1,5 +1,7 @@
-import type { PantryData } from '../types'
+import type { PantryData, SupermarketProfile } from '../types'
 import { buildSeedData } from './seed'
+import { newId } from './ids'
+import { DEFAULT_SUPERMARKET_NAME } from './supermarkets'
 
 const STORAGE_KEY = 'pantry:data'
 
@@ -29,13 +31,13 @@ export function load(): PantryData {
   }
 }
 
-const CURRENT_VERSION = 4
+const CURRENT_VERSION = 5
 
 type AnyBlob = { version?: number } & Record<string, unknown>
 
 /**
  * Bring a stored blob up to the current version, applying one step at a time so an
- * old blob chains through every upgrade (v1→v2→v3). Each step backfills the fields
+ * old blob chains through every upgrade (v1→v2→…→v5). Each step backfills the fields
  * its version introduced; an unknown version throws so the caller can re-seed.
  */
 function migrate(parsed: AnyBlob): PantryData {
@@ -52,11 +54,28 @@ function migrate(parsed: AnyBlob): PantryData {
   const validShopping = !!s && typeof s.have === 'object' && s.have !== null && !Array.isArray(s.have)
   const settings = data.settings as Partial<PantryData['settings']> | undefined
   const validSettings = !!settings && Array.isArray(settings.excludedItemIds)
+  // The provider relies on `supermarkets` never being empty and the active id
+  // always resolving — rebuild a default profile from the aisle array if needed.
+  const rawProfiles = data.supermarkets as Partial<SupermarketProfile>[] | undefined
+  const validSupermarkets =
+    Array.isArray(rawProfiles) &&
+    rawProfiles.length > 0 &&
+    rawProfiles.every(
+      (s) => !!s && typeof s.id === 'string' && typeof s.name === 'string' && Array.isArray(s.aisleIds),
+    )
+  const supermarkets: SupermarketProfile[] = validSupermarkets
+    ? (rawProfiles as SupermarketProfile[])
+    : [{ id: newId(), name: DEFAULT_SUPERMARKET_NAME, aisleIds: data.aisles.map((a) => a.id) }]
+  const activeSupermarketId = supermarkets.some((s) => s.id === data.activeSupermarketId)
+    ? data.activeSupermarketId
+    : supermarkets[0].id
   return {
     ...data,
     plan: data.plan && Array.isArray(data.plan.meals) ? data.plan : { meals: [] },
     shopping: validShopping ? { have: data.shopping.have } : { have: {} },
     settings: validSettings ? { excludedItemIds: settings.excludedItemIds! } : { excludedItemIds: [] },
+    supermarkets,
+    activeSupermarketId,
   }
 }
 
@@ -71,6 +90,31 @@ function step(blob: AnyBlob): AnyBlob {
     case 3:
       // v4 introduced allergy/excluded-item settings (Phase 5).
       return { ...blob, version: 4, settings: { excludedItemIds: [] } }
+    case 4: {
+      // v5 introduced supermarket profiles (Phase 7): walk-order moved off
+      // Aisle.order into per-profile aisleIds. Build one default profile from the
+      // old global order and retire the field.
+      const aisles = (Array.isArray(blob.aisles) ? blob.aisles : []) as Array<
+        { id: string; order?: number } & Record<string, unknown>
+      >
+      const sorted = [...aisles].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      const profile = {
+        id: newId(),
+        name: DEFAULT_SUPERMARKET_NAME,
+        aisleIds: sorted.map((a) => a.id),
+      }
+      return {
+        ...blob,
+        version: 5,
+        aisles: aisles.map((a) => {
+          const rest = { ...a }
+          delete rest.order
+          return rest
+        }),
+        supermarkets: [profile],
+        activeSupermarketId: profile.id,
+      }
+    }
     default:
       throw new Error(`Unsupported pantry data version: ${blob.version}`)
   }

@@ -113,7 +113,8 @@ function HaveStepperRow({ row }: { row: HaveRow }) {
       <span className={`flex-1 ${done ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
         {row.name}
         <span className="ml-1 text-xs text-gray-400 no-underline">
-          of {formatQuantity(row.need)} {row.unit}
+          (need {formatQuantity(row.need)}
+          {row.unit === 'each' ? '' : ` ${row.unit}`})
         </span>
       </span>
       <div className="flex items-center gap-1">
