@@ -1,5 +1,5 @@
 import type { Aisle, GroceryItem, ID, Recipe, ShoppingState, WeeklyPlan } from '../types'
-import { roundQuantity } from './format'
+import { formatQuantity, roundQuantity } from './format'
 
 /** Synthetic bucket id for a line whose linked item can't be resolved. */
 const OTHER_ID = '__other__'
@@ -99,6 +99,17 @@ export function buildShoppingList(
   if (other?.length) groups.push({ id: OTHER_ID, name: 'Other', lines: other.sort(byName) })
 
   return groups
+}
+
+/**
+ * Render the buy list as plain text for export (e.g. copy to clipboard): one
+ * "qty unit name" line per item, in aisle walk-order — no aisle headers or bullets.
+ */
+export function formatShoppingListText(groups: ShoppingGroup[]): string {
+  return groups
+    .flatMap((group) => group.lines)
+    .map((line) => `${formatQuantity(line.quantity)} ${line.unit} ${line.name}`)
+    .join('\n')
 }
 
 export interface HaveRow {
