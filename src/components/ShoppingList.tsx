@@ -1,7 +1,13 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { usePantry } from '../state/usePantry'
-import { buildHaveRows, buildRequirements, buildShoppingList, type HaveRow } from '../lib/shoppingList'
+import {
+  buildHaveRows,
+  buildRequirements,
+  buildShoppingList,
+  formatShoppingListText,
+  type HaveRow,
+} from '../lib/shoppingList'
 import { formatQuantity } from '../lib/format'
 import { btnSecondary, card, stepBtn } from './ui'
 
@@ -22,6 +28,17 @@ export function ShoppingList() {
   )
 
   const anyHave = Object.keys(data.shopping.have).length > 0
+  const [copied, setCopied] = useState(false)
+
+  const copyList = async () => {
+    try {
+      await navigator.clipboard.writeText(formatShoppingListText(groups))
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // clipboard unavailable/denied — leave the label unchanged
+    }
+  }
 
   if (haveRows.length === 0) {
     return (
@@ -44,17 +61,24 @@ export function ShoppingList() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">Shopping list</h1>
-        {anyHave && (
-          <button
-            type="button"
-            className={btnSecondary}
-            onClick={() => {
-              if (confirm('Reset everything you have marked as already have?')) clearHave()
-            }}
-          >
-            Reset already have
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {groups.length > 0 && (
+            <button type="button" className={btnSecondary} onClick={copyList}>
+              {copied ? 'Copied!' : 'Copy list'}
+            </button>
+          )}
+          {anyHave && (
+            <button
+              type="button"
+              className={btnSecondary}
+              onClick={() => {
+                if (confirm('Reset everything you have marked as already have?')) clearHave()
+              }}
+            >
+              Reset already have
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
