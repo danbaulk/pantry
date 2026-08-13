@@ -13,6 +13,3 @@ dist-ssr
 logs
 *.log
 npm-debug.log*
-
-# Local-only planning docs (prototype / productionise / monetise)
-.docs/
