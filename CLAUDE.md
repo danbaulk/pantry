@@ -16,7 +16,9 @@ pages merged into one **Supermarket** section, allergen "Avoid" toggles on its a
 pages, drag-and-drop aisle reordering, planner polish), and **supermarket profiles**
 (Phase 7: per-store aisle orderings switched via tabs on the Supermarket page). A
 nutrition-tracking Phase 6 was built, trialled, and **rejected** — see the decisions log.
-See `.docs/PROJECT_PLAN.md` for the full roadmap and decisions log before starting new work.
+The full roadmap and decisions log live in the private [`danbaulk/docs`](https://github.com/danbaulk/docs)
+repo, at `pantry/PROJECT_PLAN.md` (clone it alongside this one as `~/dev/docs`). Read it before
+starting new work.
 
 ## Commands
 
